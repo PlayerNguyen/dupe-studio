@@ -33,8 +33,7 @@
 
 - [ ] `bun run check` (Biome lint + format, zero warnings)
 - [ ] `bun run build` (TypeScript type-check + Vite build)
-- [ ] `cargo fmt --all -- --check` and `cargo clippy --all-targets -- -D warnings` (from `src-tauri/`)
-- [ ] `cargo test` (from `src-tauri/`)
+- [ ] `bun run test:rust` (Rust fmt check + clippy + `cargo test`)
 
 ## Screenshots / Recordings
 

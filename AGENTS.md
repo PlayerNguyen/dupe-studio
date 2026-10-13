@@ -34,8 +34,9 @@ Run these before treating any implementation as done:
 
 1. `bun run check:write` — Biome lint + format + import order (fixes in place).
 2. `bun run build` — runs `tsc` (the only type-check) then `vite build`.
-3. Rust changes only: `cargo check`, `cargo clippy --all-targets`, and `cargo test`
-   from `src-tauri/` (also run `cargo fmt`).
+3. Rust changes only: `bun run test:rust` (fmt check + clippy + `cargo test`), or run
+   `cargo fmt`, `cargo clippy --all-targets`, and `cargo test` from `src-tauri/`
+   directly.
 
 There is no frontend test script; do not invent one for `bun`. The Rust crate does
 have `cargo test`: unit tests live beside the code and MySQL integration tests in
