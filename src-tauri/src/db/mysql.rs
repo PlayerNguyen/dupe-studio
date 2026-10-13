@@ -202,9 +202,11 @@ fn decode_cell(row: &MySqlRow, index: usize) -> Result<Value, DbError> {
             }
         }
         "FLOAT" | "DOUBLE" => Value::from(row.try_get::<f64, _>(index).map_err(decode_error)?),
-        "DECIMAL" | "NEWDECIMAL" => {
-            Value::String(row.try_get::<String, _>(index).map_err(decode_error)?)
-        }
+        "DECIMAL" | "NEWDECIMAL" => Value::String(
+            row.try_get::<sqlx::types::Decimal, _>(index)
+                .map_err(decode_error)?
+                .to_string(),
+        ),
         "JSON" => {
             let text = row.try_get::<String, _>(index).map_err(decode_error)?;
             serde_json::from_str(&text).unwrap_or(Value::String(text))
