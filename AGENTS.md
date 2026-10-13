@@ -61,6 +61,12 @@ There is no test script; do not invent one.
 - Vite ignores `**/src-tauri/**`; Rust edits trigger a Tauri rebuild, not HMR.
 - `src-tauri/Cargo.toml` uses `edition = "2024"`, requiring a recent stable Rust toolchain.
 
+## Temporary files
+
+- Any scratch files, generated artifacts, or throwaway tests must go in `.opencode/tmp/`.
+  Never write them to the repo root or tracked source directories. The directory is
+  git-ignored, so nothing there is committed.
+
 ## Commit messages
 
 Use Conventional Commits: `<type>(<scope>): <subject>`, e.g. `feat(core): add biome prettier and linter.`

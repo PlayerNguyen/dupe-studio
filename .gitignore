@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# opencode scratch space
+.opencode/tmp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
