@@ -4,7 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri + React + Typescript</title>
+    <title>dupe-studio</title>
+    <script>
+      // Applies the persisted Mantine color scheme before first paint to avoid
+      // a flash of the wrong theme.
+      try {
+        const value = localStorage.getItem("mantine-color-scheme-value");
+        const isDark =
+          value === "dark" ||
+          (value !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute(
+          "data-mantine-color-scheme",
+          isDark ? "dark" : "light",
+        );
+      } catch {
+        // Ignore storage access errors (private mode, etc.).
+      }
+    </script>
   </head>
 
   <body>
