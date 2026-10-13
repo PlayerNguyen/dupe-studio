@@ -1,8 +1,9 @@
 # AGENTS.md
 
 Tauri 2 desktop app (`dupe-studio`) with a React 19 + TypeScript + Vite frontend.
-Despite the name, no duplicate-detection logic exists yet: `src/App.tsx` is still the
-untouched Tauri demo and `fdir` is installed but unimported.
+The frontend lives under `src/` and follows the structure defined in
+`docs/programming-guidelines.md` (Mantine + Tailwind, TanStack Query + Zustand, Vitest
+for unit tests). No duplicate-detection logic exists yet; `fdir` is installed but unimported.
 
 `docs/programming-guidelines.md` is loaded every session via `opencode.json`
 `instructions`; it requires library-standard documentation for all frontend and backend
@@ -15,8 +16,9 @@ public APIs.
 - `bun install` — install frontend deps
 - `bun run tauri dev` — run the desktop app (Vite dev server + Rust build).
   Bare `bun run dev` only starts Vite in a browser, not the app window.
-- `bun run build` — `tsc && vite build`; this is the only type-check. There is **no test
-  script** — do not assume/add `npm test`.
+- `bun run build` — `tsc && vite build`; `tsc` is the type-check.
+- `bun run typecheck` — `tsc` only.
+- `bun run test` — Vitest unit tests (`test:watch` watches, `test:coverage` writes a report).
 - `bun run check` — Biome lint + format + import-order check (`check:write` applies fixes).
 - `bun run lint` / `bun run format` — lint-only / format-only.
 - `bun run tauri build` — production bundle
@@ -33,10 +35,12 @@ public APIs.
 Run these before treating any implementation as done:
 
 1. `bun run check:write` — Biome lint + format + import order (fixes in place).
-2. `bun run build` — runs `tsc` (the only type-check) then `vite build`.
-3. Rust changes only: `cargo check` (and `cargo clippy`) from `src-tauri/`.
+2. `bun run test` — Vitest unit tests.
+3. `bun run build` — runs `tsc` (the type-check) then `vite build`.
+4. Rust changes only: `cargo check` (and `cargo clippy`) from `src-tauri/`.
 
-There is no test script; do not invent one.
+The frontend test runner is Vitest (`bun run test`), configured in `vite.config.ts` with
+setup in `src/test/setup.ts`; co-locate `*.test.tsx` files next to the code.
 
 ## TypeScript quirks
 
