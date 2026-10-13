@@ -24,6 +24,16 @@ untouched Tauri demo and `fdir` is installed but unimported.
 - `public/` and `dist/` are excluded; `node_modules` comes from `vcs.useIgnoreFile`.
 - `.gitattributes` forces `eol=lf`; if files show as `w/crlf`, re-checkout — Biome expects LF.
 
+## Verification (required for every change)
+
+Run these before treating any implementation as done:
+
+1. `bun run check:write` — Biome lint + format + import order (fixes in place).
+2. `bun run build` — runs `tsc` (the only type-check) then `vite build`.
+3. Rust changes only: `cargo check` (and `cargo clippy`) from `src-tauri/`.
+
+There is no test script; do not invent one.
+
 ## TypeScript quirks
 
 - `strict` + `noUnusedLocals` + `noUnusedParameters`: unused locals/params fail `bun run build`.
