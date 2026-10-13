@@ -208,8 +208,9 @@ fn decode_cell(row: &MySqlRow, index: usize) -> Result<Value, DbError> {
                 .to_string(),
         ),
         "JSON" => {
-            let text = row.try_get::<String, _>(index).map_err(decode_error)?;
-            serde_json::from_str(&text).unwrap_or(Value::String(text))
+            row.try_get::<sqlx::types::Json<Value>, _>(index)
+                .map_err(decode_error)?
+                .0
         }
         "DATE" => Value::String(
             row.try_get::<sqlx::types::chrono::NaiveDate, _>(index)
