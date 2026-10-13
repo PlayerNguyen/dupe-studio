@@ -4,6 +4,10 @@ Tauri 2 desktop app (`dupe-studio`) with a React 19 + TypeScript + Vite frontend
 Despite the name, no duplicate-detection logic exists yet: `src/App.tsx` is still the
 untouched Tauri demo and `fdir` is installed but unimported.
 
+`docs/programming-guidelines.md` is loaded every session via `opencode.json`
+`instructions`; it requires library-standard documentation for all frontend and backend
+public APIs.
+
 ## Commands
 
 - Package manager is **bun** (`bun.lock`); `src-tauri/tauri.conf.json` runs `bun run dev` /
