@@ -12,25 +12,44 @@
     "format": "biome format --write .",
     "check": "biome check .",
     "check:write": "biome check --write .",
+    "typecheck": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:rust": "bun run test:rust:fmt && bun run test:rust:clippy && bun run test:rust:unit",
     "test:rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
     "test:rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "test:rust:unit": "cargo test --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
+    "@mantine/core": "^9.7.2",
+    "@mantine/hooks": "^9.7.2",
+    "@tabler/icons-react": "^3.49.0",
+    "@tanstack/react-query": "^5.104.2",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "fdir": "^6.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-router": "^8.4.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
+    "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^5.0.4",
+    "jsdom": "^30.1.2",
+    "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "^5.0.4"
   }
 }
