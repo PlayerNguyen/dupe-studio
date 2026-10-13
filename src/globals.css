@@ -1,0 +1,35 @@
+@import "@mantine/core/styles.css";
+@import "tailwindcss";
+
+/*
+ * Brand color scale shared with `src/theme/theme.ts`.
+ * Tailwind utilities such as `bg-brand`, `text-brand-600` or
+ * `border-brand-300` are generated from these tokens.
+ */
+@theme {
+  --color-brand-50: #eff5fb;
+  --color-brand-100: #d7e6f4;
+  --color-brand-200: #b8d3ea;
+  --color-brand-300: #90bae0;
+  --color-brand-400: #5c9dd6;
+  --color-brand-500: #2578c1;
+  --color-brand-600: #114573;
+  --color-brand-700: #0d385e;
+  --color-brand-800: #092b49;
+  --color-brand-900: #062037;
+
+  --color-brand: #114573;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+}
