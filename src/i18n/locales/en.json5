@@ -1,0 +1,56 @@
+// English translations. Grouped by area; keys are resolved at runtime by
+// react-i18next. Prefer JSON5 comments over duplicating docs elsewhere.
+{
+  app: {
+    tagline: "View and query your databases",
+  },
+  navigation: {
+    sections: {
+      workspace: "Workspace",
+      system: "System",
+    },
+    items: {
+      overview: {
+        label: "Overview",
+        description: "Workspace summary and recent queries.",
+      },
+      settings: {
+        label: "Settings",
+        description: "Connections, preferences and integrations.",
+      },
+    },
+  },
+  common: {
+    language: {
+      title: "Language",
+      label: "Change language",
+      options: {
+        en: "English",
+        vi: "Tiếng Việt",
+      },
+    },
+    colorScheme: {
+      label: "Color scheme",
+      light: "Light",
+      dark: "Dark",
+      auto: "Auto",
+    },
+    settings: {
+      open: "Open settings",
+    },
+    sidebar: {
+      toggle: "Toggle sidebar",
+      expand: "Expand sidebar",
+      collapse: "Collapse sidebar",
+    },
+  },
+  errors: {
+    title: "Something went wrong",
+    unknown: "Something went wrong. Please try again.",
+    pageUnavailable: "The page could not be displayed.",
+    database: {
+      connectionFailed: "Could not connect to the database.",
+      unsupportedEngine: "This database engine is not supported yet.",
+    },
+  },
+}
