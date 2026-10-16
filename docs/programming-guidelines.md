@@ -55,7 +55,9 @@ src/
   assets/       # Static files imported by the bundle
   config/       # App-wide configuration (query client, env, feature flags)
   error/        # Error boundaries and error-handling helpers
+  i18n/         # react-i18next setup and JSON5 locale bundles
   layouts/      # Persistent shells (sidebar + content); one folder per layout
+  modals/       # Global modal registry, host, hook and modal bodies
   pages/        # One folder per page; feature code lives with its page
   rest/         # REST/HTTP clients, one folder per API domain (reserved)
   router/       # Route table and router provider
@@ -71,14 +73,31 @@ src/
 
 Rules:
 
-- `pages/<PageName>/` holds `index.tsx` plus optional `components/`, `api.ts`
-  (data access), `types.ts`, and a co-located `*.test.tsx`.
+- **One folder per component.** A React component lives in
+  `<ComponentName>/<ComponentName>.tsx` beside an `index.ts` barrel that
+  re-exports only what is public (`export { X } from "./X"`). Import components
+  through the folder (`./ComponentName`), never the implementation file. This
+  applies everywhere, including pages, layouts, modals and error boundaries.
+- Non-component modules stay as plain files: Zustand stores, hooks, registries,
+  route tables, configs and helpers (`store/modalStore.ts`, `modals/useModal.ts`,
+  `modals/registry.ts`, `config/configureSidebar.tsx`).
+- `pages/<PageName>/` holds `<PageName>.tsx`, `index.ts`, plus optional
+  `components/`, `api.ts` (data access), `types.ts`, and a co-located
+  `*.test.tsx`.
 - `layouts/<LayoutName>/` holds the persistent shell; `AppLayout` places the
   primary sidebar beside the routed content. Sidebar destinations are declared
   once in `config/configureSidebar.tsx` — add, remove or regroup entries there
   instead of editing the sidebar component.
+- Global modals are registered in `modals/registry.ts` and opened through the
+  `useModal` hook backed by the Zustand `store/modalStore.ts`; `<ModalHost />`
+  renders the open ones into a portal. Do not render one-off `Modal`s inline in
+  feature components.
 - Components never call `invoke` directly; add a documented wrapper under
   `services/<domain>/`. HTTP endpoints, when they exist, belong under `rest/`.
+- User-facing text is never hard-coded: add a key to every
+  `src/i18n/locales/<language>.json5` and resolve it with `useTranslation`.
+  Backend responses (Tauri commands and errors) return i18n keys only; translate
+  them on the frontend via `translateErrorKey`.
 - Do not add Redux. Use TanStack Query for async/server state and Zustand for
   small synchronous state.
 - Import across features through the folder's public entry (`index.ts(x)`),

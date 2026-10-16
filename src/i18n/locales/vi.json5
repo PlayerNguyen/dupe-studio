@@ -1,0 +1,56 @@
+// Bản dịch tiếng Việt. Nhóm theo khu vực; khóa được react-i18next tra cứu lúc
+// chạy. Dùng chú thích JSON5 thay vì mô tả trùng lặp ở nơi khác.
+{
+  app: {
+    tagline: "Xem và truy vấn dữ liệu cơ sở dữ liệu",
+  },
+  navigation: {
+    sections: {
+      workspace: "Không gian làm việc",
+      system: "Hệ thống",
+    },
+    items: {
+      overview: {
+        label: "Tổng quan",
+        description: "Tóm tắt không gian làm việc và các truy vấn gần đây.",
+      },
+      settings: {
+        label: "Cài đặt",
+        description: "Kết nối, tùy chọn và tích hợp.",
+      },
+    },
+  },
+  common: {
+    language: {
+      title: "Ngôn ngữ",
+      label: "Đổi ngôn ngữ",
+      options: {
+        en: "English",
+        vi: "Tiếng Việt",
+      },
+    },
+    colorScheme: {
+      label: "Chế độ màu",
+      light: "Sáng",
+      dark: "Tối",
+      auto: "Tự động",
+    },
+    settings: {
+      open: "Mở cài đặt",
+    },
+    sidebar: {
+      toggle: "Thu gọn hoặc mở rộng thanh bên",
+      expand: "Mở rộng thanh bên",
+      collapse: "Thu gọn thanh bên",
+    },
+  },
+  errors: {
+    title: "Đã xảy ra lỗi",
+    unknown: "Đã xảy ra lỗi. Vui lòng thử lại.",
+    pageUnavailable: "Không thể hiển thị trang.",
+    database: {
+      connectionFailed: "Không thể kết nối tới cơ sở dữ liệu.",
+      unsupportedEngine: "Loại cơ sở dữ liệu này chưa được hỗ trợ.",
+    },
+  },
+}

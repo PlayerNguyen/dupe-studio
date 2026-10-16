@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { useAppStore } from "../../store/appStore";
-import { AppSidebar } from "./AppSidebar";
+import { useAppStore } from "../../../store/appStore";
+import { AppSidebar } from ".";
 
 /** Renders the current pathname so navigation can be asserted. */
 function LocationProbe() {
@@ -42,6 +42,12 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Workspace")).toBeInTheDocument();
     expect(screen.getByText("Overview")).toBeInTheDocument();
     expect(screen.getByText("Settings")).toBeInTheDocument();
+  });
+
+  it("exposes the grouped preferences behind a single settings button", () => {
+    renderSidebar();
+
+    expect(screen.getByLabelText("Open settings")).toBeInTheDocument();
   });
 
   it("highlights only the entry for the current path", () => {

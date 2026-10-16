@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from "react-router";
+import { createBrowserRouter } from "react-router";
 
 import { sidebarConfig } from "../config/configureSidebar";
 import { ApplicationErrorFallback } from "../error/ApplicationErrorFallback";
@@ -20,8 +20,8 @@ const placeholderRoutes = sidebarConfig
     path: item.path.replace(/^\//, ""),
     element: (
       <PlaceholderPage
-        title={item.label}
-        description={item.description}
+        titleKey={item.labelKey}
+        descriptionKey={item.descriptionKey}
         icon={item.icon}
       />
     ),
@@ -33,8 +33,14 @@ const placeholderRoutes = sidebarConfig
  * `AppLayout` is the persistent shell (sidebar + content) and every page
  * renders inside its `<Outlet />`. Pages live in `src/pages/<PageName>`; routes
  * fall back to {@link ApplicationErrorFallback} when they throw.
+ *
+ * @example
+ * ```ts
+ * import { appRouter } from "./routes";
+ * render(<RouterProvider router={appRouter} />);
+ * ```
  */
-const router = createBrowserRouter([
+export const appRouter = createBrowserRouter([
   {
     path: "/",
     element: <AppLayout />,
@@ -42,12 +48,3 @@ const router = createBrowserRouter([
     children: [{ index: true, element: <HomePage /> }, ...placeholderRoutes],
   },
 ]);
-
-/**
- * Provides the configured application router to the React tree.
- *
- * @returns The router provider element.
- */
-export function RouterComponent() {
-  return <RouterProvider router={router} />;
-}

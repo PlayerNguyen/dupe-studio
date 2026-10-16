@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { Copy, LayoutDashboard, Settings } from "lucide-react";
+import { Database, LayoutDashboard, Settings } from "lucide-react";
 
 /**
  * A single destination in the primary sidebar navigation.
@@ -10,14 +10,14 @@ import { Copy, LayoutDashboard, Settings } from "lucide-react";
 export interface SidebarNavItem {
   /** Stable identifier, used as the React key and in `data-testid`s. */
   id: string;
-  /** Human-readable label rendered next to the icon. */
-  label: string;
+  /** i18n key for the entry label (see `src/i18n/locales`). */
+  labelKey: string;
   /** Router path the entry navigates to. */
   path: string;
   /** Lucide icon rendered as the entry's leading glyph. */
   icon: LucideIcon;
-  /** Short description shown in tooltips and page headers. */
-  description: string;
+  /** i18n key for the short description shown in tooltips and page headers. */
+  descriptionKey: string;
   /**
    * When `true`, the entry is active only on an exact path match. Useful for
    * the index route (`/`) so it does not stay highlighted on every page.
@@ -29,18 +29,18 @@ export interface SidebarNavItem {
 export interface SidebarSection {
   /** Stable identifier, used as the React key. */
   id: string;
-  /** Section heading rendered above the items. */
-  label: string;
+  /** i18n key for the section heading rendered above the items. */
+  labelKey: string;
   /** Entries rendered inside the section, in display order. */
   items: SidebarNavItem[];
 }
 
 /** Product identity rendered at the top of the sidebar. */
 export interface SidebarBrand {
-  /** Application name. */
+  /** Application name (a brand, so it is not translated). */
   name: string;
-  /** One-line tagline shown under the name when the sidebar is expanded. */
-  tagline: string;
+  /** i18n key for the one-line tagline shown under the name. */
+  taglineKey: string;
   /** Lucide icon used as the logo mark. */
   icon: LucideIcon;
 }
@@ -52,42 +52,43 @@ export interface SidebarBrand {
  */
 export const sidebarBrand: SidebarBrand = {
   name: "dupe-studio",
-  tagline: "Duplicate file studio",
-  icon: Copy,
+  taglineKey: "app.tagline",
+  icon: Database,
 };
 
 /**
  * Ordered navigation model for the primary sidebar.
  *
- * Edit this array to add, remove or regroup destinations; the
- * `AppSidebar` component renders whatever it finds here. Content pages are
+ * Edit this array to add, remove or regroup destinations; the `AppSidebar`
+ * component renders whatever it finds here. Labels and descriptions are i18n
+ * keys resolved at render time, never literal text. Content pages are
  * intentionally left as placeholders and will be filled in later.
  */
 export const sidebarConfig: SidebarSection[] = [
   {
     id: "workspace",
-    label: "Workspace",
+    labelKey: "navigation.sections.workspace",
     items: [
       {
         id: "overview",
-        label: "Overview",
+        labelKey: "navigation.items.overview.label",
         path: "/",
         icon: LayoutDashboard,
-        description: "Workspace summary and recent activity.",
+        descriptionKey: "navigation.items.overview.description",
         exact: true,
       },
     ],
   },
   {
     id: "system",
-    label: "System",
+    labelKey: "navigation.sections.system",
     items: [
       {
         id: "settings",
-        label: "Settings",
+        labelKey: "navigation.items.settings.label",
         path: "/settings",
         icon: Settings,
-        description: "Preferences, scan rules and integrations.",
+        descriptionKey: "navigation.items.settings.description",
       },
     ],
   },
@@ -97,7 +98,7 @@ export const sidebarConfig: SidebarSection[] = [
  * Determines whether a navigation entry should be highlighted for a pathname.
  *
  * Exact entries match only their own path; all others also match nested paths
- * (for example `/files/report` keeps the `Files` entry active).
+ * (for example `/settings/advanced` keeps the `Settings` entry active).
  *
  * @param item - The navigation entry to test.
  * @param pathname - The current router pathname (see `useLocation`).

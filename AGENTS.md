@@ -1,9 +1,10 @@
 # AGENTS.md
 
 Tauri 2 desktop app (`dupe-studio`) with a React 19 + TypeScript + Vite frontend.
-The frontend lives under `src/` and follows the structure defined in
+`dupe-studio` is a GUI for browsing and querying data from supported DBMSs (MySQL
+today). The frontend lives under `src/` and follows the structure defined in
 `docs/programming-guidelines.md` (Mantine + Tailwind, TanStack Query + Zustand, Vitest
-for unit tests). No duplicate-detection logic exists yet; `fdir` is installed but unimported.
+for unit tests).
 
 `docs/programming-guidelines.md` is loaded every session via `opencode.json`
 `instructions`; it requires library-standard documentation for all frontend and backend
@@ -54,6 +55,37 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 - `strict` + `noUnusedLocals` + `noUnusedParameters`: unused locals/params fail `bun run build`.
 - `vite.config.ts` imports `node:process` under `@ts-expect-error` because `@types/node` is not
   installed. Do not remove the directive; adding `@types/node` makes it an "unused directive" error.
+
+## Internationalization (i18n)
+
+- The frontend is localized with `react-i18next` (https://react.i18next.com/). Setup lives in
+  `src/i18n/` (`index.ts` init, `resources.ts` loads the locale files) and translations in
+  `src/i18n/locales/<language>.json5`.
+- Locale files are **JSON5** (comments, trailing commas, unquoted keys). Vite does not parse
+  JSON5, so `resources.ts` imports them with `?raw` and runs `json5.parse`. Add a language by
+  creating `locales/<code>.json5` and adding the code to `supportedLanguages`.
+- **All backend responses must be i18n keys, never user-facing prose.** Tauri commands and
+  errors return stable keys (for example `errors.database.connectionFailed`); the frontend is
+  responsible for mapping/looking up the key and translating it. Resolve them with
+  `translateErrorKey` from `src/i18n/errors.ts` (falling back to `errors.unknown`) — never
+  render a raw backend string or key.
+- Never hard-code user-facing text in components or config; add a key to every locale file and
+  resolve it with `useTranslation`. The sidebar labels/descriptions in
+  `src/config/configureSidebar.tsx` are keys, not literals.
+- Group keys by area (`app.*`, `navigation.*`, `common.*`, `errors.*`) and add every new key to
+  all locales.
+
+## Frontend component structure
+
+- **One folder per component**: `<ComponentName>/<ComponentName>.tsx` beside an `index.ts`
+  barrel that re-exports only the public surface (`export { X } from "./X"`). Import
+  components through the folder, never the implementation file. This applies everywhere,
+  including pages, layouts, modals and error boundaries.
+- Non-component modules stay plain files: Zustand stores, hooks, registries, route tables,
+  configs and helpers (`store/modalStore.ts`, `modals/useModal.ts`, `modals/registry.ts`,
+  `config/configureSidebar.tsx`, `router/routes.tsx`).
+- Global modals: register in `modals/registry.ts`, open via the `useModal` hook backed by
+  `store/modalStore.ts`, and let `<ModalHost />` render them into a portal.
 
 ## Frontend <-> Rust boundary
 

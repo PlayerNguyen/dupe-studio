@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Box,
+  Menu,
   NavLink,
   ScrollArea,
   Stack,
@@ -9,8 +10,15 @@ import {
   UnstyledButton,
   useMantineColorScheme,
 } from "@mantine/core";
-import type { LucideIcon } from "lucide-react";
-import { Moon, PanelLeftClose, PanelLeftOpen, Sun } from "lucide-react";
+import {
+  Cog,
+  Languages,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
 
 import {
@@ -18,9 +26,10 @@ import {
   type SidebarNavItem,
   sidebarBrand,
   sidebarConfig,
-} from "../../config/configureSidebar";
-import { useAppStore } from "../../store/appStore";
-import { cn } from "../../utils/cn";
+} from "../../../config/configureSidebar";
+import { useModal } from "../../../modals";
+import { useAppStore } from "../../../store/appStore";
+import { cn } from "../../../utils/cn";
 
 /** Sidebar width in pixels when expanded. */
 const EXPANDED_WIDTH = 264;
@@ -36,6 +45,58 @@ function BrandMark() {
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
       <Icon size={20} />
     </span>
+  );
+}
+
+/**
+ * Footer cog menu grouping the app-wide preferences.
+ *
+ * Exposes the color-scheme toggle and opens the language modal, keeping the
+ * two global preferences behind a single control instead of separate buttons.
+ */
+function SettingsMenu() {
+  const { t, i18n } = useTranslation();
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const { open } = useModal("language");
+
+  return (
+    <Menu position="top" withinPortal shadow="md" width={220}>
+      <Menu.Target>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          aria-label={t("common.settings.open")}
+        >
+          <Cog size={18} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={
+            colorScheme === "dark" ? <Sun size={16} /> : <Moon size={16} />
+          }
+          rightSection={
+            <Text size="xs" c="dimmed">
+              {t(`common.colorScheme.${colorScheme}`)}
+            </Text>
+          }
+          onClick={toggleColorScheme}
+        >
+          {t("common.colorScheme.label")}
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<Languages size={16} />}
+          rightSection={
+            <Text size="xs" c="dimmed">
+              {t(`common.language.options.${i18n.resolvedLanguage ?? "en"}`)}
+            </Text>
+          }
+          onClick={open}
+        >
+          {t("common.language.label")}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 
@@ -57,15 +118,17 @@ interface SidebarEntryProps {
  * desktop shell, so anchor semantics (open in new tab) are not required.
  */
 function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const Icon = item.icon;
+  const label = t(item.labelKey);
   const handleSelect = () => navigate(item.path);
 
   if (collapsed) {
     return (
-      <Tooltip label={item.label} position="right" withArrow offset={8}>
+      <Tooltip label={label} position="right" withArrow offset={8}>
         <UnstyledButton
-          aria-label={item.label}
+          aria-label={label}
           aria-current={active ? "page" : undefined}
           mod={{ active }}
           onClick={handleSelect}
@@ -84,7 +147,7 @@ function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
   return (
     <NavLink
       active={active}
-      label={item.label}
+      label={label}
       leftSection={<Icon size={18} />}
       onClick={handleSelect}
       color="brand"
@@ -98,18 +161,18 @@ function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
  * Primary application sidebar.
  *
  * Renders the brand header, the navigation model from
- * `src/config/configureSidebar.tsx`, and a footer with the color-scheme
- * toggle. The collapsed/expanded state is owned by the Zustand store
+ * `src/config/configureSidebar.tsx`, and a footer settings menu (color scheme
+ * + language). The collapsed/expanded state is owned by the Zustand store
  * (`useAppStore`) so it persists across route changes.
  *
  * @returns The rendered sidebar navigation rail.
  */
 export function AppSidebar() {
+  const { t } = useTranslation();
   const collapsed = useAppStore((state) => state.sidebarCollapsed);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
   const location = useLocation();
   const navigate = useNavigate();
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   return (
     <Box
@@ -128,11 +191,15 @@ export function AppSidebar() {
           >
             <BrandMark />
           </button>
-          <Tooltip label="Expand sidebar" position="right" withArrow>
+          <Tooltip
+            label={t("common.sidebar.expand")}
+            position="right"
+            withArrow
+          >
             <ActionIcon
               variant="subtle"
               color="gray"
-              aria-label="Toggle sidebar"
+              aria-label={t("common.sidebar.toggle")}
               onClick={toggleSidebar}
             >
               <PanelLeftOpen size={18} />
@@ -147,14 +214,18 @@ export function AppSidebar() {
               {sidebarBrand.name}
             </Text>
             <Text c="dimmed" size="xs" truncate>
-              {sidebarBrand.tagline}
+              {t(sidebarBrand.taglineKey)}
             </Text>
           </div>
-          <Tooltip label="Collapse sidebar" position="left" withArrow>
+          <Tooltip
+            label={t("common.sidebar.collapse")}
+            position="left"
+            withArrow
+          >
             <ActionIcon
               variant="subtle"
               color="gray"
-              aria-label="Toggle sidebar"
+              aria-label={t("common.sidebar.toggle")}
               onClick={toggleSidebar}
             >
               <PanelLeftClose size={18} />
@@ -178,7 +249,7 @@ export function AppSidebar() {
                   px="xs"
                   className="tracking-wide"
                 >
-                  {section.label}
+                  {t(section.labelKey)}
                 </Text>
               )}
               <Stack gap={4} align={collapsed ? "center" : "stretch"}>
@@ -198,39 +269,12 @@ export function AppSidebar() {
 
       <div
         className={cn(
-          "border-t border-[var(--mantine-color-default-border)]",
-          collapsed
-            ? "flex flex-col items-center gap-2 py-3"
-            : "flex items-center justify-end px-3 py-2",
+          "flex border-t border-[var(--mantine-color-default-border)]",
+          collapsed ? "justify-center py-3" : "justify-end px-3 py-2",
         )}
       >
-        <Tooltip
-          label={colorScheme === "dark" ? "Light mode" : "Dark mode"}
-          position="right"
-          withArrow
-        >
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label="Toggle color scheme"
-            onClick={toggleColorScheme}
-          >
-            <ColorSchemeIcon dark={colorScheme === "dark"} />
-          </ActionIcon>
-        </Tooltip>
+        <SettingsMenu />
       </div>
     </Box>
   );
-}
-
-/** Props for {@link ColorSchemeIcon}. */
-interface ColorSchemeIconProps {
-  /** Whether the active scheme is dark (renders the sun to switch away). */
-  dark: boolean;
-}
-
-/** Renders the sun/moon glyph for the color-scheme toggle. */
-function ColorSchemeIcon({ dark }: ColorSchemeIconProps) {
-  const Icon: LucideIcon = dark ? Sun : Moon;
-  return <Icon size={18} />;
 }

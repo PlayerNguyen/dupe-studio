@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createQueryClient } from "../../config/queryClient";
+import { createQueryClient } from "../../config/configureQueryClient";
 import { useAppStore } from "../../store/appStore";
 import { HomePage } from ".";
 

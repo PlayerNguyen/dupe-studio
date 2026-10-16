@@ -1,13 +1,14 @@
 import { Stack, Text, ThemeIcon, Title } from "@mantine/core";
 import type { LucideIcon } from "lucide-react";
 import { Construction } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 /** Props for {@link PlaceholderPage}. */
 export interface PlaceholderPageProps {
-  /** Page title, usually the matching sidebar entry's label. */
-  title: string;
-  /** One-line explanation of what the page will eventually do. */
-  description: string;
+  /** i18n key for the page title, usually the sidebar entry's label key. */
+  titleKey: string;
+  /** i18n key for the one-line explanation of the upcoming page. */
+  descriptionKey: string;
   /** Lucide icon shown above the title. Defaults to a construction glyph. */
   icon?: LucideIcon;
 }
@@ -17,15 +18,17 @@ export interface PlaceholderPageProps {
  *
  * Every sidebar destination is wired to a page immediately so navigation works
  * end to end; this component is the stand-in until each page is implemented.
+ * Title and description are resolved from i18n keys so they stay localized.
  *
  * @param props - See {@link PlaceholderPageProps}.
  * @returns A centered empty state describing the upcoming page.
  */
 export function PlaceholderPage({
-  title,
-  description,
+  titleKey,
+  descriptionKey,
   icon,
 }: PlaceholderPageProps) {
+  const { t } = useTranslation();
   const Icon = icon ?? Construction;
 
   return (
@@ -33,9 +36,9 @@ export function PlaceholderPage({
       <ThemeIcon size={64} radius="xl" variant="light" color="brand">
         <Icon size={30} />
       </ThemeIcon>
-      <Title order={2}>{title}</Title>
+      <Title order={2}>{t(titleKey)}</Title>
       <Text c="dimmed" maw={440} ta="center">
-        {description}
+        {t(descriptionKey)}
       </Text>
     </Stack>
   );
