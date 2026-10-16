@@ -1,5 +1,5 @@
 import { Alert, Code, Stack, Text } from "@mantine/core";
-import { IconAlertTriangle } from "@tabler/icons-react";
+import { TriangleAlert } from "lucide-react";
 import { useRouteError } from "react-router";
 
 /**
@@ -24,7 +24,7 @@ export function ApplicationErrorFallback() {
       <Alert
         color="red"
         variant="light"
-        icon={<IconAlertTriangle size={18} />}
+        icon={<TriangleAlert size={18} />}
         title="Something went wrong"
         maw={560}
       >

@@ -55,6 +55,7 @@ src/
   assets/       # Static files imported by the bundle
   config/       # App-wide configuration (query client, env, feature flags)
   error/        # Error boundaries and error-handling helpers
+  layouts/      # Persistent shells (sidebar + content); one folder per layout
   pages/        # One folder per page; feature code lives with its page
   rest/         # REST/HTTP clients, one folder per API domain (reserved)
   router/       # Route table and router provider
@@ -72,6 +73,10 @@ Rules:
 
 - `pages/<PageName>/` holds `index.tsx` plus optional `components/`, `api.ts`
   (data access), `types.ts`, and a co-located `*.test.tsx`.
+- `layouts/<LayoutName>/` holds the persistent shell; `AppLayout` places the
+  primary sidebar beside the routed content. Sidebar destinations are declared
+  once in `config/configureSidebar.tsx` — add, remove or regroup entries there
+  instead of editing the sidebar component.
 - Components never call `invoke` directly; add a documented wrapper under
   `services/<domain>/`. HTTP endpoints, when they exist, belong under `rest/`.
 - Do not add Redux. Use TanStack Query for async/server state and Zustand for

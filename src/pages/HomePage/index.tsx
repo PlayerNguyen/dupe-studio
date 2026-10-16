@@ -10,8 +10,8 @@ import {
   Title,
   useMantineColorScheme,
 } from "@mantine/core";
-import { IconMoon, IconSun } from "@tabler/icons-react";
 import { useMutation } from "@tanstack/react-query";
+import { Moon, Sun } from "lucide-react";
 import { useState } from "react";
 
 import { greet } from "../../services/system/systemService";
@@ -49,11 +49,7 @@ export function HomePage() {
             variant="light"
             aria-label="Toggle color scheme"
             leftSection={
-              colorScheme === "dark" ? (
-                <IconSun size={16} />
-              ) : (
-                <IconMoon size={16} />
-              )
+              colorScheme === "dark" ? <Sun size={16} /> : <Moon size={16} />
             }
             onClick={toggleColorScheme}
           >
