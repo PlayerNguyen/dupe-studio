@@ -23,6 +23,8 @@ See [AGENTS.md](./AGENTS.md) for the full command list and verification steps.
 
 - [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 
+> Who the hell needs an IDE? Just vibe code
+
 # License
 
 Licensed under the [MIT License](./LICENSE.md).
