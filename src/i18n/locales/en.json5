@@ -59,5 +59,10 @@
       connectionFailed: "Could not connect to the database.",
       unsupportedEngine: "This database engine is not supported yet.",
     },
+    storage: {
+      failed: "Could not read the local data store.",
+      invalidCursor: "That page cursor is invalid or has expired.",
+      unknownSortField: "That sort field is not supported.",
+    },
   },
 }

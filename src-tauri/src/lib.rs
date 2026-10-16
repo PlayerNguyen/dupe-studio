@@ -15,12 +15,19 @@
 
 pub mod app_db;
 pub mod db;
+pub mod pagination;
 
 use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
-use app_db::{AppDb, AppDbError};
+use app_db::{AppDb, AppDbError, AuditLogEntry, DatabaseInstance};
 use db::{ConnectionConfig, Database, DbError, DbValue, QueryResult};
+use pagination::{CursorPagination, OffsetPagination, Page, PaginationError, SortSpec};
+
+#[cfg(all(debug_assertions, not(test)))]
+use specta_typescript::{BigIntExportBehavior, Typescript};
+#[cfg(all(debug_assertions, not(test)))]
+use tauri_specta::{Builder, collect_commands};
 
 /// Managed Tauri state holding at most one live [`Database`] connection.
 ///
@@ -41,6 +48,7 @@ struct DbState {
 ///
 /// A greeting `String`.
 #[tauri::command]
+#[specta::specta]
 fn greet(name: &str) -> String {
     format!("Hello, {name}! You've been greeted from Rust!")
 }
@@ -56,6 +64,7 @@ fn greet(name: &str) -> String {
 ///
 /// The version string, for example `0.1.0` (release) or `0.1.0-local` (local).
 #[tauri::command]
+#[specta::specta]
 fn app_version() -> String {
     match option_env!("DUPE_STUDIO_VERSION") {
         Some(version) if !version.is_empty() => version.to_string(),
@@ -198,13 +207,128 @@ async fn db_query(
     database.query(&sql, &params).await.map_err(stringify)
 }
 
+/// Returns one offset-paginated page of saved database connections.
+///
+/// # Arguments
+///
+/// * `page` - Offset/limit request from the frontend.
+/// * `sort` - Requested sort; fields are validated against an allowlist.
+/// * `state` - Injected managed [`AppDb`].
+///
+/// # Returns
+///
+/// A [`Page`] of [`DatabaseInstance`] rows, including `total`.
+///
+/// # Errors
+///
+/// Returns an i18n key string (`errors.storage.*`) when the request is invalid
+/// or the query fails.
+#[tauri::command]
+#[specta::specta]
+async fn storage_list_instances(
+    page: OffsetPagination,
+    sort: SortSpec,
+    state: State<'_, AppDb>,
+) -> Result<Page<DatabaseInstance>, String> {
+    state
+        .list_instances(&page, &sort)
+        .await
+        .map_err(storage_error_key)
+}
+
+/// Returns one cursor-paginated page of audit events.
+///
+/// # Arguments
+///
+/// * `page` - Cursor/direction/limit request from the frontend.
+/// * `sort` - Requested sort; fields are validated against an allowlist.
+/// * `state` - Injected managed [`AppDb`].
+///
+/// # Returns
+///
+/// A [`Page`] of [`AuditLogEntry`] rows with `nextCursor` / `prevCursor`.
+///
+/// # Errors
+///
+/// Returns an i18n key string (`errors.storage.*`) when the cursor or sort is
+/// invalid, or the query fails.
+#[tauri::command]
+#[specta::specta]
+async fn storage_query_audit(
+    page: CursorPagination,
+    sort: SortSpec,
+    state: State<'_, AppDb>,
+) -> Result<Page<AuditLogEntry>, String> {
+    state
+        .query_audit(&page, &sort)
+        .await
+        .map_err(storage_error_key)
+}
+
+/// Maps an [`AppDbError`] to the i18n key the frontend translates.
+fn storage_error_key(error: AppDbError) -> String {
+    match error {
+        AppDbError::Pagination(PaginationError::InvalidCursor(_)) => {
+            "errors.storage.invalidCursor".into()
+        }
+        AppDbError::Pagination(PaginationError::UnknownSortField(_)) => {
+            "errors.storage.unknownSortField".into()
+        }
+        _ => "errors.storage.failed".into(),
+    }
+}
+
 /// Renders a [`DbError`] for the frontend.
 fn stringify(error: DbError) -> String {
     error.to_string()
 }
 
+/// Builds the specta command registry.
+///
+/// Only commands whose argument/return types derive `specta::Type` are
+/// collected; the `db_*` commands are registered for invocation but not
+/// exported yet.
+#[cfg(all(debug_assertions, not(test)))]
+fn specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new().commands(collect_commands![
+        greet,
+        app_version,
+        storage_list_instances,
+        storage_query_audit
+    ])
+}
+
+/// Exports the TypeScript bindings for the annotated commands to `path`.
+///
+/// Compiled only for non-test debug builds. It is deliberately *not* compiled
+/// into tests: linking the specta/tauri window runtime into the test binary
+/// makes `cargo test` fail to load on Windows. `run()` calls this on every debug
+/// launch, so `bun run tauri dev` is what regenerates `src/generated/bindings.ts`.
+///
+/// The file is marked `// @ts-nocheck` because tauri-specta emits a few
+/// declarations (event helpers, channels) that are unused until a command needs
+/// them, which trips `noUnusedLocals`. `i64`/`u64` values (row ids) are exported
+/// as TypeScript `number`; the frontend never sees ids beyond `2^53`.
+///
+/// # Errors
+///
+/// Returns the underlying error message when writing the bindings file fails.
+#[cfg(all(debug_assertions, not(test)))]
+pub fn export_typescript_bindings(path: impl AsRef<std::path::Path>) -> Result<(), String> {
+    let exporter = Typescript::default()
+        .header("// @ts-nocheck")
+        .bigint(BigIntExportBehavior::Number);
+    specta_builder()
+        .export(exporter, path)
+        .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(all(debug_assertions, not(test)))]
+    export_typescript_bindings("../src/generated/bindings.ts")
+        .expect("failed to export TypeScript bindings");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(DbState::default())
@@ -232,7 +356,9 @@ pub fn run() {
             db_disconnect,
             db_ping,
             db_execute,
-            db_query
+            db_query,
+            storage_list_instances,
+            storage_query_audit
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

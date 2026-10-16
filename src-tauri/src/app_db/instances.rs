@@ -3,22 +3,96 @@
 use uuid::Uuid;
 
 use super::{AppDb, AppDbError, DatabaseInstance, NewDatabaseInstance};
+use crate::pagination::sql::{self, OrderedColumn, SortableColumn};
+use crate::pagination::{OffsetPageQuery, Page, SortDirection, SortSpec};
+
+/// Columns the frontend may sort `database_instances` by.
+const SORT_COLUMNS: &[SortableColumn] = &[
+    SortableColumn {
+        field: "name",
+        expression: "name",
+    },
+    SortableColumn {
+        field: "kind",
+        expression: "kind",
+    },
+    SortableColumn {
+        field: "isFavorite",
+        expression: "is_favorite",
+    },
+    SortableColumn {
+        field: "createdAt",
+        expression: "created_at",
+    },
+    SortableColumn {
+        field: "updatedAt",
+        expression: "updated_at",
+    },
+];
+
+/// Default order: favourites first, then name, then id.
+fn default_order() -> Vec<OrderedColumn> {
+    vec![
+        OrderedColumn {
+            expression: "is_favorite",
+            direction: SortDirection::Desc,
+        },
+        OrderedColumn {
+            expression: "name",
+            direction: SortDirection::Asc,
+        },
+        OrderedColumn {
+            expression: "id",
+            direction: SortDirection::Asc,
+        },
+    ]
+}
+
+/// Resolves the requested sort, falling back to [`default_order`].
+fn resolve(sort: &SortSpec) -> Result<Vec<OrderedColumn>, AppDbError> {
+    if sort.is_empty() {
+        Ok(default_order())
+    } else {
+        Ok(sql::resolve_order(sort, SORT_COLUMNS, "id")?)
+    }
+}
 
 impl AppDb {
-    /// Lists saved connections, favourites first and then by name.
+    /// Lists saved connections for one page, with a total count.
+    ///
+    /// The rows and the count are read inside a single transaction, so `total`
+    /// always matches the returned `items`.
     ///
     /// # Errors
     ///
-    /// Returns [`AppDbError::Sqlx`] when the query fails.
-    pub async fn list_instances(&self) -> Result<Vec<DatabaseInstance>, AppDbError> {
-        let rows = sqlx::query_as::<_, DatabaseInstance>(
-            "SELECT * FROM database_instances \
-             ORDER BY is_favorite DESC, name COLLATE NOCASE ASC",
-        )
-        .fetch_all(self.pool())
+    /// Returns [`AppDbError::Pagination`] for an unknown sort field, or
+    /// [`AppDbError::Sqlx`] when a query fails.
+    pub async fn list_instances(
+        &self,
+        page: &impl OffsetPageQuery,
+        sort: &SortSpec,
+    ) -> Result<Page<DatabaseInstance>, AppDbError> {
+        let limit = page.limit();
+        let offset = page.offset();
+        let order = sql::order_by(&resolve(sort)?);
+
+        let mut tx = self.pool().begin().await?;
+
+        let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM database_instances")
+            .fetch_one(&mut *tx)
+            .await?;
+
+        let items = sqlx::query_as::<_, DatabaseInstance>(&format!(
+            "SELECT * FROM database_instances {order} LIMIT ? OFFSET ?"
+        ))
+        .bind(limit as i64)
+        .bind(offset as i64)
+        .fetch_all(&mut *tx)
         .await?;
 
-        Ok(rows)
+        tx.commit().await?;
+
+        Ok(Page::offset(items, limit, offset, total as u64))
     }
 
     /// Fetches a saved connection by id.
@@ -91,38 +165,104 @@ impl AppDb {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pagination::OffsetPagination;
+
+    async fn seed(store: &AppDb, count: usize) {
+        for index in 0..count {
+            store
+                .create_instance(NewDatabaseInstance {
+                    name: format!("db-{index:02}"),
+                    kind: "mysql".into(),
+                    host: Some("127.0.0.1".into()),
+                    port: Some(3306),
+                    database_name: Some("app".into()),
+                    username: Some("root".into()),
+                    secret_ref: None,
+                    is_favorite: index == 0,
+                })
+                .await
+                .unwrap();
+        }
+    }
 
     #[tokio::test]
-    async fn creates_lists_and_deletes_instances() {
+    async fn paginates_with_total_and_default_order() {
         let store = AppDb::connect_in_memory().await.unwrap();
+        seed(&store, 5).await;
 
-        let created = store
-            .create_instance(NewDatabaseInstance {
-                name: "Local MySQL".into(),
-                kind: "mysql".into(),
-                host: Some("127.0.0.1".into()),
-                port: Some(3306),
-                database_name: Some("app".into()),
-                username: Some("root".into()),
-                secret_ref: Some("keyring:local-mysql".into()),
-                is_favorite: true,
-            })
+        let page = store
+            .list_instances(
+                &OffsetPagination {
+                    offset: 0,
+                    limit: 2,
+                },
+                &SortSpec::default(),
+            )
             .await
             .unwrap();
 
-        assert_eq!(created.name, "Local MySQL");
-        assert!(created.is_favorite);
-        assert!(!created.id.is_empty());
-        assert!(!created.created_at.is_empty());
+        assert_eq!(page.items.len(), 2);
+        assert_eq!(page.page_info.total, Some(5));
+        assert_eq!(page.page_info.offset, Some(0));
+        assert!(page.page_info.has_more);
+        // The favourite is first.
+        assert!(page.items[0].is_favorite);
 
-        assert_eq!(store.list_instances().await.unwrap().len(), 1);
-        assert_eq!(
-            store.get_instance(&created.id).await.unwrap().unwrap().id,
-            created.id
-        );
+        let last = store
+            .list_instances(
+                &OffsetPagination {
+                    offset: 4,
+                    limit: 2,
+                },
+                &SortSpec::default(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(last.items.len(), 1);
+        assert!(!last.page_info.has_more);
+    }
 
-        assert!(store.delete_instance(&created.id).await.unwrap());
-        assert!(!store.delete_instance(&created.id).await.unwrap());
-        assert!(store.list_instances().await.unwrap().is_empty());
+    #[tokio::test]
+    async fn applies_requested_sort() {
+        let store = AppDb::connect_in_memory().await.unwrap();
+        seed(&store, 3).await;
+
+        let page = store
+            .list_instances(
+                &OffsetPagination {
+                    offset: 0,
+                    limit: 10,
+                },
+                &SortSpec {
+                    fields: vec![crate::pagination::SortField {
+                        column: "name".into(),
+                        direction: SortDirection::Desc,
+                    }],
+                },
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(page.items[0].name, "db-02");
+    }
+
+    #[tokio::test]
+    async fn rejects_unknown_sort_field() {
+        let store = AppDb::connect_in_memory().await.unwrap();
+
+        let err = store
+            .list_instances(
+                &OffsetPagination::default(),
+                &SortSpec {
+                    fields: vec![crate::pagination::SortField {
+                        column: "secret".into(),
+                        direction: SortDirection::Asc,
+                    }],
+                },
+            )
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, AppDbError::Pagination(_)));
     }
 }

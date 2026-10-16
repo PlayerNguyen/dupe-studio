@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// The password/DSN secret is never stored here; [`DatabaseInstance::secret_ref`]
 /// points at an OS keychain entry (see the future `keyring` integration).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
 pub struct DatabaseInstance {
     /// Primary key (UUID v4).
     pub id: String,
@@ -36,7 +36,7 @@ pub struct DatabaseInstance {
 }
 
 /// Input for [`create_instance`](crate::app_db::AppDb::create_instance).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct NewDatabaseInstance {
     /// Display name chosen by the user.
     pub name: String,
@@ -58,7 +58,7 @@ pub struct NewDatabaseInstance {
 }
 
 /// A configuration entry stored as a key/JSON-value pair.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
 pub struct AppSetting {
     /// Setting name.
     pub key: String,
@@ -69,7 +69,7 @@ pub struct AppSetting {
 }
 
 /// A recorded audit event.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
 pub struct AuditLogEntry {
     /// Auto-incrementing primary key.
     pub id: i64,
@@ -92,7 +92,7 @@ pub struct AuditLogEntry {
 }
 
 /// Input for [`record_audit`](crate::app_db::AppDb::record_audit).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct NewAuditLogEntry {
     /// Event area, for example `connection` or `app`.
     pub category: String,
@@ -111,8 +111,9 @@ pub struct NewAuditLogEntry {
 }
 
 /// Outcome of an audited action.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "lowercase")]
+#[specta(rename_all = "lowercase")]
 pub enum AuditStatus {
     /// The action completed successfully.
     Success,

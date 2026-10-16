@@ -59,5 +59,10 @@
       connectionFailed: "Không thể kết nối tới cơ sở dữ liệu.",
       unsupportedEngine: "Loại cơ sở dữ liệu này chưa được hỗ trợ.",
     },
+    storage: {
+      failed: "Không thể đọc kho dữ liệu cục bộ.",
+      invalidCursor: "Con trỏ trang không hợp lệ hoặc đã hết hạn.",
+      unknownSortField: "Trường sắp xếp này không được hỗ trợ.",
+    },
   },
 }

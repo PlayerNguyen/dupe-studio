@@ -100,6 +100,13 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 - Plugin permissions live in `src-tauri/capabilities/default.json`; a new plugin needs its
   permission added there (pattern: `opener:default`).
 - `src-tauri/gen/schemas/` is generated; do not hand-edit.
+- `#[specta::specta]`-annotated commands are exported to TypeScript by tauri-specta into
+  `src/generated/bindings.ts`. That file is generated (`// @ts-nocheck`, excluded from Biome)
+  — never edit it by hand. It is regenerated from `run()` on every non-test debug launch, so
+  `bun run tauri dev` refreshes it. Bindings generation is intentionally compiled out of
+  tests: linking the Tauri window runtime into the test binary makes `cargo test` fail to
+  load on Windows. Re-export the generated types through `src/types/<domain>.ts` and own the
+  domain's result/error handling in a `src/services/<domain>/` wrapper.
 
 ## Database layer (Rust)
 
