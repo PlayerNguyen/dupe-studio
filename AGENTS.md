@@ -122,9 +122,9 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 
 ## App storage (SQLite)
 
-- `src-tauri/src/app_db/` is dupe-studio's **own** SQLite database (saved database instances,
-  configuration, audit log) — distinct from `src-tauri/src/db/`, which connects to the user's
-  DBMS.
+- `src-tauri/src/app_db/` is dupe-studio's **own** SQLite database (saved database instances
+  and audit log) — distinct from `src-tauri/src/db/`, which connects to the user's DBMS.
+  Preferences are stored as JSON files, not in SQLite.
 - `AppDb` is opened and migrated once in `run()` (`src-tauri/src/lib.rs` `.setup()`), then stored
   in Tauri managed state. Migrations live in `src-tauri/migrations/*.sql` and are embedded at
   compile time via `sqlx::migrate!`; running them on every launch only applies the new ones.

@@ -57,17 +57,6 @@ pub struct NewDatabaseInstance {
     pub is_favorite: bool,
 }
 
-/// A configuration entry stored as a key/JSON-value pair.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
-pub struct AppSetting {
-    /// Setting name.
-    pub key: String,
-    /// JSON-encoded value.
-    pub value: String,
-    /// Last update timestamp (ISO-8601 UTC).
-    pub updated_at: String,
-}
-
 /// A recorded audit event.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
 pub struct AuditLogEntry {

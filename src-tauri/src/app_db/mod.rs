@@ -1,8 +1,9 @@
 //! Application-owned SQLite store.
 //!
-//! dupe-studio persists its own metadata — saved database instances,
-//! configuration and an audit log — in a local SQLite file. This is separate
-//! from [`crate::db`], which talks to the DBMS the user connects to.
+//! dupe-studio persists its own metadata — saved database instances and an
+//! audit log — in a local SQLite file. This is separate from [`crate::db`],
+//! which talks to the DBMS the user connects to. (Preferences are stored as
+//! JSON files, not here.)
 //!
 //! [`AppDb`] is the single entry point. Open it once at startup (see
 //! `src/lib.rs`), call [`AppDb::migrate`] to bring the schema up to date, then
@@ -23,7 +24,6 @@
 //! # async fn run() -> Result<(), dupe_studio_lib::app_db::AppDbError> {
 //! let store = AppDb::open("dupe-studio.sqlite3").await?;
 //! store.migrate().await?;
-//! store.set_setting("locale", "\"en\"").await?;
 //! # Ok(())
 //! # }
 //! ```
@@ -32,7 +32,6 @@ mod audit;
 mod error;
 mod instances;
 mod models;
-mod settings;
 
 use std::path::Path;
 use std::time::Duration;
@@ -43,7 +42,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use error::AppDbError;
 pub use models::{
-    AppSetting, AuditLogEntry, AuditStatus, DatabaseInstance, NewAuditLogEntry, NewDatabaseInstance,
+    AuditLogEntry, AuditStatus, DatabaseInstance, NewAuditLogEntry, NewDatabaseInstance,
 };
 
 /// Migrations embedded into the binary at compile time (`migrations/`).
