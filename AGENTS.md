@@ -141,6 +141,15 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
   Never write them to the repo root or tracked source directories. The directory is
   git-ignored, so nothing there is committed.
 
+## Pull requests
+
+- Open PRs with the repository's GitHub template (`.github/PULL_REQUEST_TEMPLATE.md`) filled
+  in; do not overwrite it with a custom body (passing `--body`/`--body-file` to `gh pr create`
+  bypasses the template).
+- `.github/workflows/pr-template.yml` runs `scripts/check-pr-template.ts` and fails the PR when
+  a required `##` section heading from the template is missing (`Screenshots / Recordings` is
+  optional).
+
 ## Commit messages
 
 Use Conventional Commits: `<type>(<scope>): <subject>`, e.g. `feat(core): add biome prettier and linter.`
