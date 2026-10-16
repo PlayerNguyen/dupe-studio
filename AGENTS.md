@@ -113,6 +113,19 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
   match arm in `Database::connect`. Keep `DbValue`/`QueryResult` as the shared
   data contract.
 
+## App storage (SQLite)
+
+- `src-tauri/src/app_db/` is dupe-studio's **own** SQLite database (saved database instances,
+  configuration, audit log) — distinct from `src-tauri/src/db/`, which connects to the user's
+  DBMS.
+- `AppDb` is opened and migrated once in `run()` (`src-tauri/src/lib.rs` `.setup()`), then stored
+  in Tauri managed state. Migrations live in `src-tauri/migrations/*.sql` and are embedded at
+  compile time via `sqlx::migrate!`; running them on every launch only applies the new ones.
+- Schema changes: add a new `migrations/000N_*.sql` file (never edit an applied one) plus the
+  matching repository method and a test under `src-tauri/src/app_db/`.
+- Secrets are never stored in SQLite: `database_instances.secret_ref` points at an OS keychain
+  entry (`keyring`). Audit `message_key` values are i18n keys, never prose.
+
 ## Dev server / toolchain
 
 - Vite is pinned to port `1420` with `strictPort: true`; `tauri.conf.json` `devUrl` depends on it.

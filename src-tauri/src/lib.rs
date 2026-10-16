@@ -13,11 +13,13 @@
 //! `db_*` commands acquire it in read mode; `db_connect` / `db_disconnect`
 //! acquire it in write mode.
 
+pub mod app_db;
 pub mod db;
 
-use tauri::State;
+use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
+use app_db::{AppDb, AppDbError};
 use db::{ConnectionConfig, Database, DbError, DbValue, QueryResult};
 
 /// Managed Tauri state holding at most one live [`Database`] connection.
@@ -206,6 +208,23 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(DbState::default())
+        .setup(|app| {
+            // Open the app-owned SQLite store and bring its schema up to date
+            // before any command runs. Migrations are embedded and idempotent,
+            // so an app update only applies the new ones.
+            let data_dir = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&data_dir)?;
+            let db_path = data_dir.join("dupe-studio.sqlite3");
+
+            let store: AppDb = tauri::async_runtime::block_on(async {
+                let store = AppDb::open(&db_path).await?;
+                store.migrate().await?;
+                Ok::<AppDb, AppDbError>(store)
+            })?;
+
+            app.manage(store);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             app_version,
