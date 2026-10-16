@@ -40,8 +40,14 @@ jobs:
           else
             version="${{ github.event.inputs.version }}"
           fi
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          else
+            prerelease=false
+          fi
           echo "value=${version}" >> "$GITHUB_OUTPUT"
           echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${prerelease}" >> "$GITHUB_OUTPUT"
 
       - name: Install Linux system dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -74,6 +80,24 @@ jobs:
         shell: bash
         run: bun scripts/set-version.ts "${{ steps.version.outputs.value }}"
 
+      - name: Select bundle targets
+        id: bundles
+        shell: bash
+        run: |
+          # The WiX/MSI target requires a numeric-only pre-release identifier, so
+          # a version such as `0.0.1-alpha` cannot be packaged as an MSI. NSIS
+          # accepts it: pre-releases ship the NSIS installer only, stable
+          # releases get both. Other platforms keep the `targets: "all"` default.
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            if [ "${{ steps.version.outputs.prerelease }}" = "true" ]; then
+              echo "args=--bundles nsis" >> "$GITHUB_OUTPUT"
+            else
+              echo "args=--bundles nsis,msi" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "args=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and publish release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -87,4 +111,5 @@ jobs:
           tagName: ${{ steps.version.outputs.tag }}
           releaseName: "dupe-studio ${{ steps.version.outputs.tag }}"
           releaseDraft: true
-          prerelease: false
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          args: ${{ steps.bundles.outputs.args }}
