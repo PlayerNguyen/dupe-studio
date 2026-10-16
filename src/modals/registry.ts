@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { AboutModal } from "./AboutModal";
 import { LanguageModal } from "./LanguageModal";
 
 /** Definition of a single registrable global modal. */
@@ -26,6 +27,10 @@ export const modalRegistry = {
   language: {
     titleKey: "common.language.title",
     Component: LanguageModal,
+  },
+  about: {
+    titleKey: "common.about.title",
+    Component: AboutModal,
   },
 } as const satisfies Record<string, ModalDefinition>;
 

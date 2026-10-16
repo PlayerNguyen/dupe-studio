@@ -43,6 +43,24 @@ fn greet(name: &str) -> String {
     format!("Hello, {name}! You've been greeted from Rust!")
 }
 
+/// Returns the running backend (Rust crate) version.
+///
+/// Released binaries are stamped at compile time with `DUPE_STUDIO_VERSION`,
+/// which the release pipeline sets from the git tag, so the value matches the
+/// frontend bundle version. Every other (local/dev) build falls back to the
+/// crate version with a `-local` suffix so it is never mistaken for a release.
+///
+/// # Returns
+///
+/// The version string, for example `0.1.0` (release) or `0.1.0-local` (local).
+#[tauri::command]
+fn app_version() -> String {
+    match option_env!("DUPE_STUDIO_VERSION") {
+        Some(version) if !version.is_empty() => version.to_string(),
+        _ => format!("{}-local", env!("CARGO_PKG_VERSION")),
+    }
+}
+
 /// Opens a connection and stores it in managed state, replacing any previous
 /// connection.
 ///
@@ -190,6 +208,7 @@ pub fn run() {
         .manage(DbState::default())
         .invoke_handler(tauri::generate_handler![
             greet,
+            app_version,
             db_connect,
             db_disconnect,
             db_ping,
