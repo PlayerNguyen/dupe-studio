@@ -38,6 +38,13 @@
     settings: {
       open: "Open settings",
     },
+    about: {
+      label: "About",
+      title: "About dupe-studio",
+      frontendVersion: "Frontend",
+      backendVersion: "Backend",
+      unavailable: "Unavailable",
+    },
     sidebar: {
       toggle: "Toggle sidebar",
       expand: "Expand sidebar",

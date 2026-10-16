@@ -19,6 +19,7 @@ public APIs.
   Bare `bun run dev` only starts Vite in a browser, not the app window.
 - `bun run build` — `tsc && vite build`; `tsc` is the type-check.
 - `bun run typecheck` — `tsc` only.
+- `bun run typecheck:node` — type-check the tooling project (`vite.config.ts`, `scripts/**`).
 - `bun run test` — Vitest unit tests (`test:watch` watches, `test:coverage` writes a report).
 - `bun run check` — Biome lint + format + import-order check (`check:write` applies fixes).
 - `bun run lint` / `bun run format` — lint-only / format-only.
@@ -53,8 +54,10 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 ## TypeScript quirks
 
 - `strict` + `noUnusedLocals` + `noUnusedParameters`: unused locals/params fail `bun run build`.
-- `vite.config.ts` imports `node:process` under `@ts-expect-error` because `@types/node` is not
-  installed. Do not remove the directive; adding `@types/node` makes it an "unused directive" error.
+- `@types/node` is installed for the build/tooling project (`tsconfig.node.json`, which covers
+  `vite.config.ts` and `scripts/**`). The frontend `src` project is typed against the DOM/Vite
+  libs. `bun run build` (`tsc`) only checks `src`; type-check the tooling with
+  `bun run typecheck:node` (`bun run typecheck` covers `src`).
 
 ## Internationalization (i18n)
 
@@ -116,11 +119,36 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 - Vite ignores `**/src-tauri/**`; Rust edits trigger a Tauri rebuild, not HMR.
 - `src-tauri/Cargo.toml` uses `edition = "2024"`, requiring a recent stable Rust toolchain.
 
+## Release / CD
+
+- `.github/workflows/release.yml` builds installers for macOS, Linux and Windows on a
+  `v*` tag (or a manual dispatch with a version) using `tauri-apps/tauri-action`, and
+  attaches them to a draft GitHub Release.
+- Before building, the pipeline runs `scripts/set-version.ts <version>` to sync the tag
+  into `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`.
+- The app surfaces both versions: the frontend reads `FRONTEND_VERSION`
+  (`src/config/appInfo.ts`, injected by Vite `define` from `APP_VERSION`) and the backend
+  reads `DUPE_STUDIO_VERSION` via `option_env!` in the `app_version` command. The About
+  modal (`src/modals/AboutModal`) shows both; the sidebar footer shows the frontend version.
+- Local/dev builds have no `APP_VERSION`/`DUPE_STUDIO_VERSION`, so both values fall back to
+  `<package version>-local` (e.g. `0.1.0-local`) and are never mistaken for a release.
+- Code signing (macOS notarization / Windows) is optional; add the relevant secrets and
+  pass them via `env` for public distribution.
+
 ## Temporary files
 
 - Any scratch files, generated artifacts, or throwaway tests must go in `.opencode/tmp/`.
   Never write them to the repo root or tracked source directories. The directory is
   git-ignored, so nothing there is committed.
+
+## Pull requests
+
+- Open PRs with the repository's GitHub template (`.github/PULL_REQUEST_TEMPLATE.md`) filled
+  in; do not overwrite it with a custom body (passing `--body`/`--body-file` to `gh pr create`
+  bypasses the template).
+- `.github/workflows/pr-template.yml` runs `scripts/check-pr-template.ts` and fails the PR when
+  a required `##` section heading from the template is missing (`Screenshots / Recordings` is
+  optional).
 
 ## Commit messages
 

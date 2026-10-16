@@ -13,7 +13,9 @@ const modalIds = Object.keys(modalRegistry) as ModalId[];
  * Reads `useModalStore` and mounts the registered component for each id whose
  * flag is `true`. Mantine's `Modal` portals to `document.body`, so modals float
  * above the shell regardless of where `ModalHost` sits in the tree. Mount
- * `<ModalHost />` once, near the app root.
+ * `<ModalHost />` once near the app root, **inside** the providers the modal
+ * bodies depend on (React context flows through portals, so a modal that uses
+ * TanStack Query needs `ModalHost` to be a descendant of `QueryClientProvider`).
  *
  * @returns The portal-rendered modals, or an empty fragment when none are open.
  */
