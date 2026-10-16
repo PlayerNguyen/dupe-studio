@@ -37,10 +37,17 @@ Run these before treating any implementation as done:
 1. `bun run check:write` — Biome lint + format + import order (fixes in place).
 2. `bun run test` — Vitest unit tests.
 3. `bun run build` — runs `tsc` (the type-check) then `vite build`.
-4. Rust changes only: `cargo check` (and `cargo clippy`) from `src-tauri/`.
+4. Rust changes only: `bun run test:rust` (fmt check + clippy + `cargo test`), or run
+   `cargo fmt`, `cargo clippy --all-targets`, and `cargo test` from `src-tauri/`
+   directly.
 
 The frontend test runner is Vitest (`bun run test`), configured in `vite.config.ts` with
-setup in `src/test/setup.ts`; co-locate `*.test.tsx` files next to the code.
+setup in `src/test/setup.ts`; co-locate `*.test.tsx` files next to the code. The Rust
+crate does have `cargo test`: unit tests live beside the code and MySQL integration
+tests in `src-tauri/tests/mysql_integration.rs` are opt-in — they skip unless
+`DUPE_STUDIO_MYSQL_URL` (or `MYSQL_TEST_URL`) points at a reachable server.
+`.github/workflows/backend.yml` runs fmt + clippy + `cargo test` on Linux with a
+MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 
 ## TypeScript quirks
 
@@ -58,6 +65,18 @@ setup in `src/test/setup.ts`; co-locate `*.test.tsx` files next to the code.
 - Plugin permissions live in `src-tauri/capabilities/default.json`; a new plugin needs its
   permission added there (pattern: `opener:default`).
 - `src-tauri/gen/schemas/` is generated; do not hand-edit.
+
+## Database layer (Rust)
+
+- `src-tauri/src/db/` implements a strategy pattern: `DatabaseStrategy` is the
+  per-engine trait and `Database` is the façade the Tauri commands talk to. MySQL
+  (`MySqlStrategy`, via `sqlx`) is implemented; other `DbKind` variants return
+  `DbError::Unsupported`.
+- Tauri commands `db_connect`, `db_disconnect`, `db_ping`, `db_execute`,
+  `db_query` share a single connection held in `DbState` (`tokio::sync::RwLock`).
+- New engines: add a `DbKind` variant, a `DatabaseStrategy` implementation, and a
+  match arm in `Database::connect`. Keep `DbValue`/`QueryResult` as the shared
+  data contract.
 
 ## Dev server / toolchain
 

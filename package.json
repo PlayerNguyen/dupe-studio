@@ -15,7 +15,11 @@
     "typecheck": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:rust": "bun run test:rust:fmt && bun run test:rust:clippy && bun run test:rust:unit",
+    "test:rust:fmt": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
+    "test:rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
+    "test:rust:unit": "cargo test --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@mantine/core": "^9.7.2",
