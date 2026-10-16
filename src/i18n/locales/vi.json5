@@ -38,6 +38,13 @@
     settings: {
       open: "Mở cài đặt",
     },
+    about: {
+      label: "Giới thiệu",
+      title: "Giới thiệu dupe-studio",
+      frontendVersion: "Giao diện",
+      backendVersion: "Máy chủ",
+      unavailable: "Không khả dụng",
+    },
     sidebar: {
       toggle: "Thu gọn hoặc mở rộng thanh bên",
       expand: "Mở rộng thanh bên",

@@ -1,13 +1,26 @@
-// @ts-expect-error type error without @types/node package
 import process from "node:process";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
+import pkg from "./package.json" with { type: "json" };
+
 const host = process.env.TAURI_DEV_HOST;
 
+/**
+ * Version stamped into the frontend bundle.
+ *
+ * The release pipeline exports `APP_VERSION` from the git tag. Every other
+ * build is a local/dev build and gets a `-local` suffix so it is never mistaken
+ * for a released version (see `src/config/appInfo.ts`).
+ */
+const appVersion = process.env.APP_VERSION ?? `${pkg.version}-local`;
+
 // https://vite.dev/config/
-export default defineConfig(() => ({
+export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   plugins: [react(), tailwindcss()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
@@ -48,4 +61,4 @@ export default defineConfig(() => ({
       ],
     },
   },
-}));
+});

@@ -22,3 +22,23 @@ import type { GreetParameters } from "../../types/system";
 export async function greet({ name }: GreetParameters): Promise<string> {
   return invoke<string>("greet", { name });
 }
+
+/**
+ * Calls the Rust `app_version` Tauri command.
+ *
+ * The backend reports its compiled-in version: the released git tag version, or
+ * `<version>-local` for local/dev builds (see the `app_version` command in
+ * `src-tauri/src/lib.rs`). It mirrors the frontend `FRONTEND_VERSION` from
+ * `src/config/appInfo.ts`.
+ *
+ * @returns The backend version string, for example `0.1.0` or `0.1.0-local`.
+ * @throws If the command is not registered or the backend returns an error.
+ *
+ * @example
+ * ```ts
+ * const backendVersion = await getAppVersion();
+ * ```
+ */
+export async function getAppVersion(): Promise<string> {
+  return invoke<string>("app_version");
+}

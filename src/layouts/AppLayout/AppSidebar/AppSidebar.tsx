@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import {
   Cog,
+  Info,
   Languages,
   Moon,
   PanelLeftClose,
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router";
-
+import { FRONTEND_VERSION } from "../../../config/appInfo";
 import {
   isSidebarItemActive,
   type SidebarNavItem,
@@ -57,7 +58,8 @@ function BrandMark() {
 function SettingsMenu() {
   const { t, i18n } = useTranslation();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const { open } = useModal("language");
+  const language = useModal("language");
+  const about = useModal("about");
 
   return (
     <Menu position="top" withinPortal shadow="md" width={220}>
@@ -91,9 +93,13 @@ function SettingsMenu() {
               {t(`common.language.options.${i18n.resolvedLanguage ?? "en"}`)}
             </Text>
           }
-          onClick={open}
+          onClick={language.open}
         >
           {t("common.language.label")}
+        </Menu.Item>
+        <Menu.Divider />
+        <Menu.Item leftSection={<Info size={16} />} onClick={about.open}>
+          {t("common.about.label")}
         </Menu.Item>
       </Menu.Dropdown>
     </Menu>
@@ -269,10 +275,15 @@ export function AppSidebar() {
 
       <div
         className={cn(
-          "flex border-t border-[var(--mantine-color-default-border)]",
-          collapsed ? "justify-center py-3" : "justify-end px-3 py-2",
+          "flex items-center border-t border-[var(--mantine-color-default-border)]",
+          collapsed ? "justify-center py-3" : "px-3 py-2",
         )}
       >
+        {collapsed ? null : (
+          <Text c="dimmed" size="xs" className="flex-1">
+            v{FRONTEND_VERSION}
+          </Text>
+        )}
         <SettingsMenu />
       </div>
     </Box>
