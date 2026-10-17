@@ -2,7 +2,10 @@ import type { LucideIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
 import type { DatabaseKind } from "../../types/database";
-import type { NewDatabaseInstance } from "../../types/storage";
+import type {
+  DatabaseInstance,
+  NewDatabaseInstance,
+} from "../../types/storage";
 
 /**
  * Fields every engine form must produce.
@@ -99,6 +102,13 @@ export interface DatabaseFormRenderProps {
   isSubmitting: boolean;
   /** Localized backend error to show inside the form. */
   error: string | null;
+  /**
+   * Saved row being edited, or `undefined` when creating.
+   *
+   * When set, the registration derives the form's initial values from the row
+   * through its `toInitialValues` mapper instead of the registry defaults.
+   */
+  instance?: DatabaseInstance;
   /** Receives the metadata plus credentials from the engine registration. */
   onSubmit: (payload: CreateInstancePayload) => void;
 }
@@ -145,8 +155,15 @@ export interface DatabaseRegistration<
   descriptionKey: string;
   /** Icon shown in the engine rail. */
   icon: LucideIcon;
-  /** Default values passed to the form. */
+  /** Default values passed to the form when creating. */
   initialValues: TDraft;
+  /**
+   * Maps a saved row to this engine's draft for the edit modal.
+   *
+   * The password always starts empty: an edit only sends a new password when
+   * the user types one.
+   */
+  toInitialValues: (instance: DatabaseInstance) => TDraft;
   /** Form component for this engine. */
   Form: ComponentType<DatabaseInstanceFormProps<TDraft>>;
   /**

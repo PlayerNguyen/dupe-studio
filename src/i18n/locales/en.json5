@@ -58,7 +58,17 @@
       loading: "Loading databases…",
       error: "Could not load databases.",
       connectFailed: "Could not connect to this database.",
+      deleteFailed: "Could not delete the database instance.",
       add: "Add database",
+      actions: "Instance actions",
+      edit: "Edit",
+      delete: "Delete",
+    },
+    edit: {
+      title: "Edit database instance",
+      actions: {
+        save: "Save changes",
+      },
     },
     add: {
       title: "Add database instance",

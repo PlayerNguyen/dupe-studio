@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryClient } from "../../../config/configureQueryClient";
 import { useAppStore } from "../../../store/appStore";
+import { useInstanceEditorStore } from "../../../store/instanceEditorStore";
 import { useModalStore } from "../../../store/modalStore";
 import { AppSidebar } from ".";
 
@@ -14,8 +15,16 @@ const connectMocks = vi.hoisted(() => ({
   connectInstance: vi.fn(),
 }));
 
+const storageMocks = vi.hoisted(() => ({
+  deleteInstance: vi.fn(),
+}));
+
 vi.mock("../../../services/database/databaseService", () => ({
   connectInstance: connectMocks.connectInstance,
+}));
+
+vi.mock("../../../services/storage/storageService", () => ({
+  deleteInstance: storageMocks.deleteInstance,
 }));
 
 vi.mock("../../../services/storage/useInstances", () => ({
@@ -64,7 +73,9 @@ describe("AppSidebar", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
     useModalStore.getState().reset();
+    useInstanceEditorStore.getState().reset();
     connectMocks.connectInstance.mockReset();
+    storageMocks.deleteInstance.mockReset();
   });
 
   it("renders the brand and every navigation entry", () => {
@@ -117,6 +128,28 @@ describe("AppSidebar", () => {
     await user.click(screen.getByRole("button", { name: "Local MySQL" }));
 
     expect(connectMocks.connectInstance).toHaveBeenCalledWith("instance-1");
+  });
+
+  it("deletes an instance from the row menu", async () => {
+    const user = userEvent.setup();
+    storageMocks.deleteInstance.mockResolvedValue(true);
+    renderSidebar();
+
+    await user.click(screen.getByLabelText("Instance actions"));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+
+    expect(storageMocks.deleteInstance).toHaveBeenCalledWith("instance-1");
+  });
+
+  it("opens the edit modal with the selected instance", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.click(screen.getByLabelText("Instance actions"));
+    await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+
+    expect(useInstanceEditorStore.getState().instance?.id).toBe("instance-1");
+    expect(useModalStore.getState().openModals.editInstance).toBe(true);
   });
 
   it("opens the add-instance modal from the instances action", async () => {

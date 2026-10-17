@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 
 import { AboutModal } from "./AboutModal";
 import { AddInstanceModal } from "./AddInstanceModal";
+import { EditInstanceModal } from "./EditInstanceModal";
 import { LanguageModal } from "./LanguageModal";
 
 /** Definition of a single registrable global modal. */
@@ -32,6 +33,11 @@ const definitions = {
   addInstance: {
     titleKey: "database.add.title",
     Component: AddInstanceModal,
+    size: 860,
+  },
+  editInstance: {
+    titleKey: "database.edit.title",
+    Component: EditInstanceModal,
     size: 860,
   },
 } as const satisfies Record<string, ModalDefinition>;

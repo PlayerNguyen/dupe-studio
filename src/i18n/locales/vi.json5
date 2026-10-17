@@ -58,7 +58,17 @@
       loading: "Đang tải danh sách…",
       error: "Không thể tải danh sách kết nối.",
       connectFailed: "Không thể kết nối tới cơ sở dữ liệu này.",
+      deleteFailed: "Không thể xoá kết nối cơ sở dữ liệu.",
       add: "Thêm cơ sở dữ liệu",
+      actions: "Thao tác với kết nối",
+      edit: "Sửa",
+      delete: "Xoá",
+    },
+    edit: {
+      title: "Sửa kết nối cơ sở dữ liệu",
+      actions: {
+        save: "Lưu thay đổi",
+      },
     },
     add: {
       title: "Thêm kết nối cơ sở dữ liệu",

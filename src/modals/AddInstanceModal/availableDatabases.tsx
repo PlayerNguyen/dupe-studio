@@ -1,6 +1,6 @@
 import { Database } from "lucide-react";
-
 import type { DatabaseKind } from "../../types/database";
+import type { DatabaseInstance } from "../../types/storage";
 import { MySqlInstanceForm } from "./components/MySqlInstanceForm";
 import { defineDatabase } from "./defineDatabase";
 import type { AvailableDatabase, MySqlDatabaseDraft } from "./types";
@@ -22,6 +22,25 @@ const mysqlInitialValues: MySqlDatabaseDraft = {
   databaseName: "",
   username: "root",
 };
+
+/**
+ * Maps a saved MySQL row to the edit form's draft.
+ *
+ * The password always starts empty so editing metadata never resubmits the
+ * stored secret; "remember" mirrors whether a keychain reference exists.
+ */
+function mysqlDraftFrom(instance: DatabaseInstance): MySqlDatabaseDraft {
+  return {
+    instanceName: instance.name,
+    password: "",
+    remember: instance.secret_ref !== null,
+    isFavorite: instance.is_favorite,
+    host: instance.host ?? "127.0.0.1",
+    port: instance.port ?? 3306,
+    databaseName: instance.database_name ?? "",
+    username: instance.username ?? "root",
+  };
+}
 
 /**
  * Registry of every database engine the add-instance modal can create.
@@ -47,6 +66,7 @@ export const availableDatabases: readonly AvailableDatabase[] = [
     descriptionKey: "database.kinds.mysql.description",
     icon: Database,
     initialValues: mysqlInitialValues,
+    toInitialValues: mysqlDraftFrom,
     Form: MySqlInstanceForm,
     toInput: (values) => ({
       name: values.instanceName.trim(),

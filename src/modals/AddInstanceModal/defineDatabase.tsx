@@ -40,10 +40,14 @@ export function defineDatabase<TDraft extends DatabaseInstanceDraft>(
     descriptionKey: registration.descriptionKey,
     icon: registration.icon,
     initialValues: registration.initialValues,
-    renderForm: ({ formId, isSubmitting, error, onSubmit }) => (
+    renderForm: ({ formId, isSubmitting, error, instance, onSubmit }) => (
       <registration.Form
         formId={formId}
-        initialValues={registration.initialValues}
+        initialValues={
+          instance
+            ? registration.toInitialValues(instance)
+            : registration.initialValues
+        }
         isSubmitting={isSubmitting}
         error={error}
         onSubmit={(values) =>
