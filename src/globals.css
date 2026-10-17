@@ -26,6 +26,12 @@
   body,
   #root {
     height: 100%;
+    /* The shell is a fixed-height layout (`AppLayout` uses h-screen and owns
+       its scroll regions: `<main>` and the sidebar ScrollArea), so the document
+       itself must never scroll. Without this, an overlay that animates past the
+       viewport edge - a Menu sliding up from the footer, for example - extends
+       the scrollable overflow area and adds both scrollbars. */
+    overflow: hidden;
   }
 
   body {
