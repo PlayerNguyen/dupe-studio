@@ -13,6 +13,7 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use super::error::DbError;
+use super::secret::Secret;
 
 /// The relational engine a connection targets.
 ///
@@ -112,6 +113,10 @@ impl FromStr for DbKind {
 /// and the discrete fields are ignored, which is useful for tests and for
 /// connection strings pasted by users.
 ///
+/// The password is a [`Secret`]: it can be deserialized from the frontend, but
+/// the type deliberately does not implement `Serialize`, so a config can never
+/// be serialized back out with the password attached.
+///
 /// # Examples
 ///
 /// ```
@@ -125,7 +130,7 @@ impl FromStr for DbKind {
 /// assert_eq!(config.resolved_port(), 3306);
 /// assert_eq!(config.url(), "mysql://root@127.0.0.1:3306/app");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ConnectionConfig {
     /// Backend this configuration targets.
     pub kind: DbKind,
@@ -133,22 +138,24 @@ pub struct ConnectionConfig {
     #[serde(default)]
     pub host: String,
     /// TCP port. Defaults to [`DbKind::default_port`] when omitted.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub port: Option<u16>,
     /// Login user. Ignored when [`url`](Self::url) is set.
     #[serde(default)]
     pub username: String,
     /// Login password. Ignored when [`url`](Self::url) is set.
+    ///
+    /// Held as a [`Secret`] so it is zeroized on drop and never serialized.
     #[serde(default)]
-    pub password: String,
+    pub password: Secret,
     /// Optional default schema/database name.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub database: Option<String>,
     /// Extra DSN query parameters, e.g. `ssl-mode`.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[serde(default)]
     pub params: BTreeMap<String, String>,
     /// Complete connection string that overrides the discrete fields.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub url: Option<String>,
 }
 
@@ -162,7 +169,7 @@ impl ConnectionConfig {
             host: String::new(),
             port: None,
             username: String::new(),
-            password: String::new(),
+            password: Secret::default(),
             database: None,
             params: BTreeMap::new(),
             url: None,
@@ -205,7 +212,9 @@ impl ConnectionConfig {
     }
 
     /// Sets the password. Consumes and returns `self` for chaining.
-    pub fn with_password(mut self, password: impl Into<String>) -> Self {
+    ///
+    /// Accepts anything convertible into a [`Secret`], e.g. `&str` or `String`.
+    pub fn with_password(mut self, password: impl Into<Secret>) -> Self {
         self.password = password.into();
         self
     }
@@ -252,7 +261,7 @@ impl ConnectionConfig {
             dsn.push_str(&encode_component(&self.username));
             if !self.password.is_empty() {
                 dsn.push(':');
-                dsn.push_str(&encode_component(&self.password));
+                dsn.push_str(&encode_component(self.password.expose_secret()));
             }
             dsn.push('@');
         }
@@ -378,6 +387,19 @@ mod tests {
             config.url(),
             "mysql://user%40host:p%40ss%3Aword%2Fwith@localhost:3306"
         );
+    }
+
+    #[test]
+    fn debug_redacts_the_password() {
+        let config = ConnectionConfig::new(DbKind::MySql)
+            .with_host("localhost")
+            .with_username("root")
+            .with_password("s3cr3t");
+
+        let rendered = format!("{config:?}");
+
+        assert!(rendered.contains("Secret(***)"));
+        assert!(!rendered.contains("s3cr3t"));
     }
 
     #[test]

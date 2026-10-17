@@ -38,12 +38,14 @@
 mod config;
 mod error;
 mod mysql;
+mod secret;
 mod strategy;
 mod value;
 
 pub use config::{ConnectionConfig, DbKind};
 pub use error::DbError;
 pub use mysql::MySqlStrategy;
+pub use secret::Secret;
 pub use strategy::DatabaseStrategy;
 pub use value::{ColumnInfo, DbValue, QueryResult};
 

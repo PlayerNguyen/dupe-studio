@@ -63,6 +63,9 @@
       failed: "Không thể đọc kho dữ liệu cục bộ.",
       invalidCursor: "Con trỏ trang không hợp lệ hoặc đã hết hạn.",
       unknownSortField: "Trường sắp xếp này không được hỗ trợ.",
+      secretMissing: "Mật khẩu đã lưu không còn. Hãy nhập lại.",
+      secretStoreUnavailable: "Kho thông tin xác thực của hệ thống không khả dụng.",
+      secretWriteFailed: "Không thể lưu mật khẩu vào kho thông tin xác thực.",
     },
   },
 }
