@@ -22,8 +22,32 @@ pub enum PageDirection {
 
 /// Cursor request as sent by the frontend.
 ///
-/// `cursor` is opaque; pass back the `nextCursor`/`prevCursor` from a previous
-/// page. `direction` selects forward or backward paging.
+/// # The `cursor` token
+///
+/// `cursor` is **opaque**: the frontend must treat it as an unreadable blob and
+/// only ever send back a token this API produced (`nextCursor` / `prevCursor`
+/// from a previous page). It never needs to construct or parse one.
+///
+/// Under the hood a token is the `base64url` (no padding) encoding of this JSON
+/// payload:
+///
+/// ```json
+/// { "v": 1, "fingerprint": "status:desc,id:asc", "keys": [{ "text": "success" }] }
+/// ```
+///
+/// * `v` — cursor format version. A token carrying any other version is
+///   rejected with [`PaginationError::InvalidCursor`], which keeps the format
+///   free to change in a later release.
+/// * `fingerprint` — the `SortSpec` signature the cursor was minted for.
+///   Replaying a cursor against a different sort is rejected rather than
+///   silently returning the wrong rows (the boundary keys only mean something
+///   for the order they were taken from).
+/// * `keys` — the sort values of the boundary row, in resolved sort order and
+///   including the tiebreaker repositories append automatically. Each entry is
+///   `{ "int": 7 }`, `{ "text": "abc" }` or `{ "bool": true }`.
+///
+/// `cursor: None` means "start at the first page" and is the only case where
+/// `direction` is ignored: the repositories always begin in natural sort order.
 #[derive(Debug, Clone, Deserialize, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CursorPagination {
