@@ -28,10 +28,18 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 sqlx = { version = "0.8", default-features = false, features = [
     "runtime-tokio-rustls",
     "mysql",
+    "sqlite",
+    "migrate",
+    "macros",
     "json",
     "chrono",
     "rust_decimal",
 ] }
+uuid = { version = "1", features = ["v4", "serde"] }
+base64 = "0.23.1"
+specta = { version = "=2.0.0-rc.22", features = ["derive", "function"] }
+specta-typescript = "0.0.9"
+tauri-specta = { version = "=2.0.0-rc.21", features = ["derive", "typescript"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

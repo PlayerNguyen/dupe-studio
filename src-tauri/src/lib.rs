@@ -12,13 +12,25 @@
 //! A single connection is held in [`DbState`] behind an async [`RwLock`]. The
 //! `db_*` commands acquire it in read mode; `db_connect` / `db_disconnect`
 //! acquire it in write mode.
+//!
+//! Storage commands live in [`commands`], one module per domain, and delegate
+//! to the services in [`app_db`].
 
+pub mod app_db;
+pub mod commands;
 pub mod db;
+pub mod pagination;
 
-use tauri::State;
+use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
+use app_db::{AppDb, AppDbError};
 use db::{ConnectionConfig, Database, DbError, DbValue, QueryResult};
+
+#[cfg(all(debug_assertions, not(test)))]
+use specta_typescript::{BigIntExportBehavior, Typescript};
+#[cfg(all(debug_assertions, not(test)))]
+use tauri_specta::{Builder, collect_commands};
 
 /// Managed Tauri state holding at most one live [`Database`] connection.
 ///
@@ -39,6 +51,7 @@ struct DbState {
 ///
 /// A greeting `String`.
 #[tauri::command]
+#[specta::specta]
 fn greet(name: &str) -> String {
     format!("Hello, {name}! You've been greeted from Rust!")
 }
@@ -54,6 +67,7 @@ fn greet(name: &str) -> String {
 ///
 /// The version string, for example `0.1.0` (release) or `0.1.0-local` (local).
 #[tauri::command]
+#[specta::specta]
 fn app_version() -> String {
     match option_env!("DUPE_STUDIO_VERSION") {
         Some(version) if !version.is_empty() => version.to_string(),
@@ -201,11 +215,72 @@ fn stringify(error: DbError) -> String {
     error.to_string()
 }
 
+/// Builds the specta command registry.
+///
+/// Only commands whose argument/return types derive `specta::Type` are
+/// collected; the `db_*` commands are registered for invocation but not
+/// exported yet.
+#[cfg(all(debug_assertions, not(test)))]
+fn specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new().commands(collect_commands![
+        greet,
+        app_version,
+        commands::audit::storage_query_audit,
+        commands::database_instances::storage_list_instances
+    ])
+}
+
+/// Exports the TypeScript bindings for the annotated commands to `path`.
+///
+/// Compiled only for non-test debug builds. It is deliberately *not* compiled
+/// into tests: linking the specta/tauri window runtime into the test binary
+/// makes `cargo test` fail to load on Windows. `run()` calls this on every debug
+/// launch, so `bun run tauri dev` is what regenerates `src/generated/bindings.ts`.
+///
+/// The file is marked `// @ts-nocheck` because tauri-specta emits a few
+/// declarations (event helpers, channels) that are unused until a command needs
+/// them, which trips `noUnusedLocals`. `i64`/`u64` values (row ids) are exported
+/// as TypeScript `number`; the frontend never sees ids beyond `2^53`.
+///
+/// # Errors
+///
+/// Returns the underlying error message when writing the bindings file fails.
+#[cfg(all(debug_assertions, not(test)))]
+pub fn export_typescript_bindings(path: impl AsRef<std::path::Path>) -> Result<(), String> {
+    let exporter = Typescript::default()
+        .header("// @ts-nocheck")
+        .bigint(BigIntExportBehavior::Number);
+    specta_builder()
+        .export(exporter, path)
+        .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(all(debug_assertions, not(test)))]
+    export_typescript_bindings("../src/generated/bindings.ts")
+        .expect("failed to export TypeScript bindings");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(DbState::default())
+        .setup(|app| {
+            // Open the app-owned SQLite store and bring its schema up to date
+            // before any command runs. Migrations are embedded and idempotent,
+            // so an app update only applies the new ones.
+            let data_dir = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&data_dir)?;
+            let db_path = data_dir.join("dupe-studio.sqlite3");
+
+            let store: AppDb = tauri::async_runtime::block_on(async {
+                let store = AppDb::open(&db_path).await?;
+                store.migrate().await?;
+                Ok::<AppDb, AppDbError>(store)
+            })?;
+
+            app.manage(store);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             app_version,
@@ -213,7 +288,9 @@ pub fn run() {
             db_disconnect,
             db_ping,
             db_execute,
-            db_query
+            db_query,
+            commands::audit::storage_query_audit,
+            commands::database_instances::storage_list_instances
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

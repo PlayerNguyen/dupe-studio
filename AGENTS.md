@@ -100,6 +100,13 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 - Plugin permissions live in `src-tauri/capabilities/default.json`; a new plugin needs its
   permission added there (pattern: `opener:default`).
 - `src-tauri/gen/schemas/` is generated; do not hand-edit.
+- `#[specta::specta]`-annotated commands are exported to TypeScript by tauri-specta into
+  `src/generated/bindings.ts`. That file is generated (`// @ts-nocheck`, excluded from Biome)
+  — never edit it by hand. It is regenerated from `run()` on every non-test debug launch, so
+  `bun run tauri dev` refreshes it. Bindings generation is intentionally compiled out of
+  tests: linking the Tauri window runtime into the test binary makes `cargo test` fail to
+  load on Windows. Re-export the generated types through `src/types/<domain>.ts` and own the
+  domain's result/error handling in a `src/services/<domain>/` wrapper.
 
 ## Database layer (Rust)
 
@@ -112,6 +119,19 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 - New engines: add a `DbKind` variant, a `DatabaseStrategy` implementation, and a
   match arm in `Database::connect`. Keep `DbValue`/`QueryResult` as the shared
   data contract.
+
+## App storage (SQLite)
+
+- `src-tauri/src/app_db/` is dupe-studio's **own** SQLite database (saved database instances
+  and audit log) — distinct from `src-tauri/src/db/`, which connects to the user's DBMS.
+  Preferences are stored as JSON files, not in SQLite.
+- `AppDb` is opened and migrated once in `run()` (`src-tauri/src/lib.rs` `.setup()`), then stored
+  in Tauri managed state. Migrations live in `src-tauri/migrations/*.sql` and are embedded at
+  compile time via `sqlx::migrate!`; running them on every launch only applies the new ones.
+- Schema changes: add a new `migrations/000N_*.sql` file (never edit an applied one) plus the
+  matching repository method and a test under `src-tauri/src/app_db/`.
+- Secrets are never stored in SQLite: `database_instances.secret_ref` points at an OS keychain
+  entry (`keyring`). Audit `message_key` values are i18n keys, never prose.
 
 ## Dev server / toolchain
 
