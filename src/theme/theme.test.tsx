@@ -3,6 +3,7 @@ import {
   Button,
   MantineProvider,
   type MantineTheme,
+  Menu,
 } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
@@ -109,6 +110,34 @@ describe("theme press feedback", () => {
     expect(screen.getByRole("button", { name: "Refresh" })).toHaveClass(
       PRESS_FEEDBACK_CLASS,
     );
+  });
+
+  it("keeps the class when the button is a menu target", () => {
+    // The sidebar footer settings button is an ActionIcon wrapped in
+    // Menu.Target, so the class has to survive that clone.
+    render(
+      <MantineProvider theme={theme}>
+        <Menu position="top">
+          <Menu.Target>
+            <ActionIcon aria-label="Settings" />
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item>Colour scheme</Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      </MantineProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "Settings" })).toHaveClass(
+      PRESS_FEEDBACK_CLASS,
+    );
+  });
+
+  it("squishes icon buttons harder than wide buttons", () => {
+    expect(theme.components?.ActionIcon?.styles?.root).toMatchObject({
+      "--dupe-press-scale": "0.9",
+    });
+    expect(theme.components?.Button?.styles?.root).toBeUndefined();
   });
 
   it("springs back with an overshooting curve over a long release", () => {

@@ -41,8 +41,10 @@
  *
  * The curves and durations come from the theme as custom properties (see
  * `src/theme/cssVariablesResolver.ts`), so CSS and TypeScript share one source;
- * the fallbacks only matter if the resolver is not wired up. Buttons that
- * Mantine renders as disabled or loading are excluded, so their own styles win.
+ * the fallbacks only matter if the resolver is not wired up. `--dupe-press-scale`
+ * is per component: small icon buttons need a stronger squish than a wide
+ * button before the movement is visible. Buttons that Mantine renders as
+ * disabled or loading are excluded, so their own styles win.
  */
 @layer components {
   .dupe-press-feedback {
@@ -53,7 +55,7 @@
   .dupe-press-feedback:active:where(
     :not([data-loading], :disabled, [data-disabled])
   ) {
-    transform: scale(0.965);
+    transform: translateY(1px) scale(var(--dupe-press-scale, 0.96));
     transition-duration: var(--dupe-press-duration, 180ms);
     transition-timing-function: var(
       --dupe-smooth-timing,

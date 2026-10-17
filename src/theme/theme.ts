@@ -166,6 +166,9 @@ export const theme = createTheme({
   components: {
     ActionIcon: {
       classNames: { root: PRESS_FEEDBACK_CLASS },
+      // Icon buttons are small, so they need a stronger squish before the
+      // movement is visible (`--dupe-press-scale`, see `src/globals.css`).
+      styles: { root: { "--dupe-press-scale": "0.9" } },
     },
     Button: {
       classNames: { root: PRESS_FEEDBACK_CLASS },
