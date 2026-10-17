@@ -1,4 +1,3 @@
-import type { ModalProps } from "@mantine/core";
 import type { ComponentType } from "react";
 
 import type { DatabaseInstance } from "../types/storage";
@@ -11,9 +10,8 @@ import { LanguageModal } from "./LanguageModal";
  * Props every registrable modal is opened with.
  *
  * Adding an entry here makes `useModal` type-check the props passed to `open`
- * and gives the IDE autocomplete for the payload, so no per-modal store is
- * needed to transfer data into a popup. Use `undefined` for modals that take no
- * props.
+ * and gives the IDE autocomplete for the payload. Use `undefined` for modals
+ * that take no props.
  */
 export interface ModalPropsMap {
   language: undefined;
@@ -22,65 +20,22 @@ export interface ModalPropsMap {
   editInstance: { instance: DatabaseInstance };
 }
 
-/** Definition of a single registrable global modal. */
-export interface ModalDefinition<TProps = unknown> {
-  /** i18n key for the modal title (see `src/i18n/locales`). */
-  titleKey: string;
-  /** Component rendered inside the modal body. Mounted only while open. */
-  Component: ComponentType<TProps>;
-  /**
-   * Optional Mantine modal size. Defaults to Mantine's `md` when omitted; wide
-   * modals with a rail plus content (such as the add-instance modal) set a
-   * pixel value here.
-   */
-  size?: ModalProps["size"];
-  /**
-   * Optional Mantine styles for the modal parts.
-   *
-   * Modals that own their scrolling (each pane has a `ScrollArea`) set
-   * `content: { overflowY: "hidden" }` here so Mantine's outer content
-   * scrollbar never appears.
-   */
-  styles?: ModalProps["styles"];
-}
+/** Union of every registered modal id. */
+export type ModalId = keyof ModalPropsMap;
 
-/** Registry shape: one definition per id, typed with that modal's props. */
-export type ModalRegistry = {
-  [K in keyof ModalPropsMap]: ModalDefinition<ModalPropsMap[K]>;
-};
-
-/** Source-of-truth modal definitions, checked against {@link ModalRegistry}. */
-const definitions = {
-  language: {
-    titleKey: "common.language.title",
-    Component: LanguageModal,
-  },
-  about: {
-    titleKey: "common.about.title",
-    Component: AboutModal,
-  },
-  addInstance: {
-    titleKey: "database.add.title",
-    Component: AddInstanceModal,
-    size: 860,
-    styles: { content: { overflowY: "hidden" } },
-  },
-  editInstance: {
-    titleKey: "database.edit.title",
-    Component: EditInstanceModal,
-    size: 860,
-    styles: { content: { overflowY: "hidden" } },
-  },
-} satisfies ModalRegistry;
+/** Props a modal id is opened with. */
+export type ModalPropsFor<TId extends ModalId> = ModalPropsMap[TId];
 
 /**
  * Registry of every global modal in the application.
  *
- * Add an entry to `definitions` and a matching `ModalPropsMap` entry to make a
- * modal openable through `useModal` and rendered by `ModalHost`; the key
- * becomes a valid {@link ModalId}. The host passes each modal's props through
- * to its component, so data (for example the instance being edited) travels as
- * a typed `open(id, props)` argument instead of a separate store.
+ * Each component **defines its own Mantine `<Modal>`** and reads its open state,
+ * close handler and typed props through `useModal`; `ModalHost` only mounts the
+ * components. That keeps per-modal concerns (title, size, styles, layout) next
+ * to the modal body instead of in a shared host.
+ *
+ * To add a modal: add its props to {@link ModalPropsMap} and register the
+ * component here.
  *
  * @example
  * ```ts
@@ -88,10 +43,9 @@ const definitions = {
  * edit.open({ instance });
  * ```
  */
-export const modalRegistry: ModalRegistry = definitions;
-
-/** Union of every registered modal id. */
-export type ModalId = keyof typeof modalRegistry;
-
-/** Props a modal id is opened with. */
-export type ModalPropsFor<TId extends ModalId> = ModalPropsMap[TId];
+export const modalRegistry: Record<ModalId, ComponentType> = {
+  language: LanguageModal,
+  about: AboutModal,
+  addInstance: AddInstanceModal,
+  editInstance: EditInstanceModal,
+};

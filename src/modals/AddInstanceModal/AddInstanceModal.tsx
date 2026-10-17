@@ -3,6 +3,7 @@ import {
   Button,
   Flex,
   Group,
+  Modal,
   ScrollArea,
   Stack,
   Text,
@@ -30,12 +31,14 @@ const FORM_ID = "add-instance-form";
 const PANE_HEIGHT = 420;
 
 /**
- * Body of the add-database-instance modal.
+ * Add-database-instance modal.
  *
- * Renders a two-pane layout: the left rail lists every engine from
- * `availableDatabases`, and the right pane renders the selected engine's form.
- * Each pane has its own `ScrollArea` and the footer sits outside them, so
- * overflow never scrolls (and therefore never shifts) the whole modal.
+ * Defines its own Mantine `<Modal>` and reads `isOpen`/`close` from
+ * `useModal("addInstance")`. The body has a two-pane layout: the left rail
+ * lists every engine from `availableDatabases`, and the right pane renders the
+ * selected engine's form. Each pane has its own `ScrollArea` and the footer sits
+ * outside them, so overflow never scrolls (and therefore never shifts) the whole
+ * modal.
  *
  * The shell is engine-agnostic — it passes registry defaults and the create
  * mutation down through `renderForm`, and receives a ready
@@ -49,11 +52,11 @@ const PANE_HEIGHT = 420;
  *
  * Registered as `addInstance` in `src/modals/registry.ts`.
  *
- * @returns The engine rail and the selected engine's form.
+ * @returns The add-instance dialog.
  */
 export function AddInstanceModal() {
   const { t } = useTranslation();
-  const { close } = useModal("addInstance");
+  const { isOpen, close } = useModal("addInstance");
   const queryClient = useQueryClient();
   const [kind, setKind] = useState<DatabaseKind>(
     () => firstAvailableDatabase().kind,
@@ -84,49 +87,74 @@ export function AddInstanceModal() {
   };
 
   return (
-    <Flex direction="column" gap="md">
-      <Flex gap="md" h={PANE_HEIGHT}>
-        <Box
-          w={224}
-          className="shrink-0 border-r border-[var(--mantine-color-default-border)] pr-3"
+    <Modal.Root opened={isOpen} onClose={close} size={860} centered>
+      <Modal.Overlay backgroundOpacity={0.55} blur={3} />
+      <Modal.Content
+        style={{
+          overflowY: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Modal.Header>
+          <Modal.Title>{t("database.add.title")}</Modal.Title>
+          <Modal.CloseButton />
+        </Modal.Header>
+
+        <Modal.Body style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <Flex gap="md" h={PANE_HEIGHT}>
+            <Box
+              w={224}
+              className="shrink-0 border-r border-(--mantine-color-default-border) pr-3"
+            >
+              <ScrollArea h="100%" type="hover">
+                <DatabaseKindList
+                  items={availableDatabases}
+                  activeKind={active.kind}
+                  disabled={mutation.isPending}
+                  onSelect={selectKind}
+                />
+              </ScrollArea>
+            </Box>
+
+            <ScrollArea flex={1} miw={0} h="100%" type="hover">
+              <Box pr="sm">
+                <Stack gap={2} mb="md">
+                  <Text fw={600}>{t(active.labelKey)}</Text>
+                  <Text size="xs" c="dimmed">
+                    {t(active.descriptionKey)}
+                  </Text>
+                </Stack>
+
+                {active.renderForm({
+                  formId: FORM_ID,
+                  isSubmitting: mutation.isPending,
+                  error,
+                  onSubmit: (payload) => mutation.mutate(payload),
+                })}
+              </Box>
+            </ScrollArea>
+          </Flex>
+        </Modal.Body>
+
+        <Group
+          justify="flex-end"
+          gap="sm"
+          p="md"
+          className="border-t border-(--mantine-color-default-border)"
         >
-          <ScrollArea h="100%" type="hover">
-            <DatabaseKindList
-              items={availableDatabases}
-              activeKind={active.kind}
-              disabled={mutation.isPending}
-              onSelect={selectKind}
-            />
-          </ScrollArea>
-        </Box>
-
-        <ScrollArea flex={1} miw={0} h="100%" type="hover">
-          <Box pr="sm">
-            <Stack gap={2} mb="md">
-              <Text fw={600}>{t(active.labelKey)}</Text>
-              <Text size="xs" c="dimmed">
-                {t(active.descriptionKey)}
-              </Text>
-            </Stack>
-
-            {active.renderForm({
-              formId: FORM_ID,
-              isSubmitting: mutation.isPending,
-              error,
-              onSubmit: (payload) => mutation.mutate(payload),
-            })}
-          </Box>
-        </ScrollArea>
-      </Flex>
-
-      <Group justify="flex-end" gap="sm">
-        <Button variant="default" onClick={close} disabled={mutation.isPending}>
-          {t("database.add.actions.cancel")}
-        </Button>
-        <Button type="submit" form={FORM_ID} loading={mutation.isPending}>
-          {t("database.add.actions.create")}
-        </Button>
-      </Group>
-    </Flex>
+          <Button
+            variant="default"
+            onClick={close}
+            disabled={mutation.isPending}
+          >
+            {t("database.add.actions.cancel")}
+          </Button>
+          <Button type="submit" form={FORM_ID} loading={mutation.isPending}>
+            {t("database.add.actions.create")}
+          </Button>
+        </Group>
+      </Modal.Content>
+    </Modal.Root>
   );
 }

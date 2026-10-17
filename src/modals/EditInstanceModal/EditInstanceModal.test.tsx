@@ -42,7 +42,7 @@ function renderModal() {
   return render(
     <MantineProvider>
       <QueryClientProvider client={createQueryClient()}>
-        <EditInstanceModal instance={savedInstance} />
+        <EditInstanceModal />
       </QueryClientProvider>
     </MantineProvider>,
   );
@@ -80,7 +80,7 @@ describe("EditInstanceModal", () => {
     render(
       <MantineProvider>
         <QueryClientProvider client={queryClient}>
-          <EditInstanceModal instance={savedInstance} />
+          <EditInstanceModal />
         </QueryClientProvider>
       </MantineProvider>,
     );

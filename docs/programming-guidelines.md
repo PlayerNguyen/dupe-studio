@@ -88,11 +88,12 @@ Rules:
   primary sidebar beside the routed content. Sidebar destinations are declared
   once in `config/configureSidebar.tsx` — add, remove or regroup entries there
   instead of editing the sidebar component.
-- Global modals are registered in `modals/registry.ts` with their props in
-  `ModalPropsMap`, and opened through `useModal`, which type-checks the payload
-  (`useModal("editInstance").open({ instance })`). `<ModalHost />` forwards the
-  props and renders the open ones into a portal. Do not render one-off `Modal`s
-  inline in feature components or add a store just to pass data into one.
+- Global modals define their own Mantine `<Modal>` and read `isOpen` plus their
+  typed props from `useModal` (`const { isOpen, props, close } = useModal(...)`).
+  Register the component in `modals/registry.ts` with its payload in
+  `ModalPropsMap`; `<ModalHost />` only mounts the registered components. Do not
+  put modal chrome in `ModalHost`, render one-off `Modal`s inline in feature
+  components, or add a store just to pass data into a modal.
 - Use Mantine layout primitives (`Flex`, `Stack`, `Group`, `Box`) instead of
   Tailwind `flex` utility `div`s. Give each scrollable pane its own `ScrollArea`
   so a scrollbar never shifts the whole surface, and keep footers outside those
