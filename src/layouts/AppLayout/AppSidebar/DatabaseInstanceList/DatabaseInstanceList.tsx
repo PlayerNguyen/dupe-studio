@@ -19,6 +19,7 @@ import { deleteInstance } from "../../../../services/storage/storageService";
 import { useInstances } from "../../../../services/storage/useInstances";
 import { useInstanceEditorStore } from "../../../../store/instanceEditorStore";
 import type { DatabaseInstance } from "../../../../types/storage";
+import { CollapsedInstanceList } from "./CollapsedInstanceList";
 
 /** Props for {@link DatabaseInstanceList}. */
 export interface DatabaseInstanceListProps {
@@ -80,37 +81,12 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
 
   if (collapsed) {
     return (
-      <Stack gap={4} align="center" data-testid="database-instance-list">
-        <div className="mx-auto h-px w-6 bg-[var(--mantine-color-default-border)]" />
-        <Tooltip label={t("database.instances.add")} position="right" withArrow>
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            aria-label={t("database.instances.add")}
-            onClick={addInstance.open}
-          >
-            <Plus size={18} />
-          </ActionIcon>
-        </Tooltip>
-        {instances.map((instance) => (
-          <Tooltip
-            key={instance.id}
-            label={instance.name}
-            position="right"
-            withArrow
-            offset={8}
-          >
-            <UnstyledButton
-              aria-label={instance.name}
-              disabled={connectMutation.isPending}
-              onClick={() => connect(instance.id)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--mantine-color-dimmed)] transition-colors hover:bg-[var(--mantine-color-default-hover)] hover:text-[var(--mantine-color-text)]"
-            >
-              <Database size={20} />
-            </UnstyledButton>
-          </Tooltip>
-        ))}
-      </Stack>
+      <CollapsedInstanceList
+        instances={instances}
+        connecting={connectMutation.isPending}
+        onAdd={addInstance.open}
+        onConnect={connect}
+      />
     );
   }
 
