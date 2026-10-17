@@ -34,6 +34,14 @@ export interface ModalDefinition<TProps = unknown> {
    * pixel value here.
    */
   size?: ModalProps["size"];
+  /**
+   * Optional Mantine styles for the modal parts.
+   *
+   * Modals that own their scrolling (each pane has a `ScrollArea`) set
+   * `content: { overflowY: "hidden" }` here so Mantine's outer content
+   * scrollbar never appears.
+   */
+  styles?: ModalProps["styles"];
 }
 
 /** Registry shape: one definition per id, typed with that modal's props. */
@@ -55,11 +63,13 @@ const definitions = {
     titleKey: "database.add.title",
     Component: AddInstanceModal,
     size: 860,
+    styles: { content: { overflowY: "hidden" } },
   },
   editInstance: {
     titleKey: "database.edit.title",
     Component: EditInstanceModal,
     size: 860,
+    styles: { content: { overflowY: "hidden" } },
   },
 } satisfies ModalRegistry;
 

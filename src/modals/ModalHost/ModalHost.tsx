@@ -30,7 +30,7 @@ export function ModalHost() {
   return (
     <>
       {modalIds.map((id) => {
-        const { titleKey, Component, size } = modalRegistry[id];
+        const { titleKey, Component, size, styles } = modalRegistry[id];
         const ModalComponent = Component as unknown as ComponentType<
           Record<string, unknown>
         >;
@@ -43,6 +43,7 @@ export function ModalHost() {
             onClose={() => closeModal(id)}
             title={t(titleKey)}
             size={size}
+            styles={styles}
             centered
             overlayProps={{ backgroundOpacity: 0.55, blur: 3 }}
           >
