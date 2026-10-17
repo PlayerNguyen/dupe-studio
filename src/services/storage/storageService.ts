@@ -4,6 +4,7 @@ import type {
   AuditLogEntry,
   CursorPagination,
   DatabaseInstance,
+  NewDatabaseInstance,
   OffsetPagination,
   Page,
   SortSpec,
@@ -32,6 +33,45 @@ export async function listInstances(
   sort: SortSpec = { fields: [] },
 ): Promise<Page<DatabaseInstance>> {
   const result = await commands.storageListInstances(page, sort);
+
+  if (result.status === "error") {
+    throw new Error(translateErrorKey(result.error));
+  }
+
+  return result.data;
+}
+
+/**
+ * Persists a new saved database connection.
+ *
+ * Wraps the Rust `storage_create_instance` command. The backend generates the
+ * instance id and timestamps, trims the name/kind, and rejects blank names or
+ * an out-of-range port with an i18n key. Passwords are not part of the payload:
+ * `secret_ref` stays `null` until the OS keychain integration lands.
+ *
+ * @param input - Instance metadata collected by the add-instance form.
+ * @returns The stored connection, including its generated `id` and timestamps.
+ * @throws {Error} With a localized message when the input is invalid or the
+ *   insert fails.
+ *
+ * @example
+ * ```ts
+ * const created = await createInstance({
+ *   name: "Local MySQL",
+ *   kind: "mysql",
+ *   host: "127.0.0.1",
+ *   port: 3306,
+ *   database_name: "app",
+ *   username: "root",
+ *   secret_ref: null,
+ *   is_favorite: false,
+ * });
+ * ```
+ */
+export async function createInstance(
+  input: NewDatabaseInstance,
+): Promise<DatabaseInstance> {
+  const result = await commands.storageCreateInstance(input);
 
   if (result.status === "error") {
     throw new Error(translateErrorKey(result.error));

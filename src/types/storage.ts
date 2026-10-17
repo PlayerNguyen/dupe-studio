@@ -11,6 +11,7 @@ export type {
   AuditLogEntry,
   CursorPagination,
   DatabaseInstance,
+  NewDatabaseInstance,
   OffsetPagination,
   Page,
   PageDirection,

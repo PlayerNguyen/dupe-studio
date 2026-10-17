@@ -2,10 +2,28 @@ import { MantineProvider } from "@mantine/core";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useAppStore } from "../../../store/appStore";
+import { useModalStore } from "../../../store/modalStore";
 import { AppSidebar } from ".";
+
+vi.mock("../../../services/storage/useInstances", () => ({
+  useInstances: () => ({
+    data: {
+      items: [
+        {
+          id: "instance-1",
+          name: "Local MySQL",
+          kind: "mysql",
+          is_favorite: true,
+        },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 /** Renders the current pathname so navigation can be asserted. */
 function LocationProbe() {
@@ -33,6 +51,7 @@ function renderSidebar(initialPath = "/") {
 describe("AppSidebar", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
+    useModalStore.getState().reset();
   });
 
   it("renders the brand and every navigation entry", () => {
@@ -68,6 +87,22 @@ describe("AppSidebar", () => {
     await user.click(screen.getByText("Settings"));
 
     expect(screen.getByTestId("pathname")).toHaveTextContent("/settings");
+  });
+
+  it("lists the saved database instances", () => {
+    renderSidebar();
+
+    expect(screen.getByText("Databases")).toBeInTheDocument();
+    expect(screen.getByText("Local MySQL")).toBeInTheDocument();
+  });
+
+  it("opens the add-instance modal from the instances action", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.click(screen.getByLabelText("Add database"));
+
+    expect(useModalStore.getState().openModals.addInstance).toBe(true);
   });
 
   it("toggles the collapsed state through the store", async () => {

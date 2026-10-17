@@ -51,18 +51,69 @@
       collapse: "Thu gọn thanh bên",
     },
   },
+  database: {
+    instances: {
+      title: "Cơ sở dữ liệu",
+      empty: "Chưa có kết nối nào.",
+      loading: "Đang tải danh sách…",
+      error: "Không thể tải danh sách kết nối.",
+      add: "Thêm cơ sở dữ liệu",
+    },
+    add: {
+      title: "Thêm kết nối cơ sở dữ liệu",
+      availableDatabases: "Cơ sở dữ liệu có sẵn",
+      fields: {
+        instanceName: "Tên kết nối",
+        instanceNamePlaceholder: "Ví dụ: MySQL Production",
+        host: "Máy chủ",
+        hostPlaceholder: "127.0.0.1",
+        port: "Cổng",
+        databaseName: "Cơ sở dữ liệu",
+        databaseNamePlaceholder: "Không bắt buộc",
+        username: "Tên đăng nhập",
+        favorite: "Ghim vào yêu thích",
+        favoriteDescription: "Kết nối được ghim sẽ hiển thị đầu danh sách.",
+      },
+      actions: {
+        cancel: "Hủy",
+        create: "Thêm kết nối",
+        test: "Thử kết nối",
+      },
+      errors: {
+        title: "Không thể thêm kết nối",
+        nameRequired: "Hãy nhập tên cho kết nối này.",
+        hostRequired: "Hãy nhập tên máy chủ hoặc địa chỉ.",
+        usernameRequired: "Hãy nhập tên đăng nhập.",
+        portInvalid: "Hãy nhập cổng từ 1 đến 65535.",
+        createFailed: "Không thể lưu kết nối cơ sở dữ liệu.",
+      },
+      test: {
+        success: "Kết nối thành công.",
+        failed: "Kết nối thất bại.",
+      },
+    },
+    kinds: {
+      mysql: {
+        label: "MySQL",
+        description: "Máy chủ MySQL và MariaDB.",
+      },
+    },
+  },
   errors: {
     title: "Đã xảy ra lỗi",
     unknown: "Đã xảy ra lỗi. Vui lòng thử lại.",
     pageUnavailable: "Không thể hiển thị trang.",
     database: {
       connectionFailed: "Không thể kết nối tới cơ sở dữ liệu.",
+      invalidConfig: "Một số thông tin kết nối không hợp lệ.",
       unsupportedEngine: "Loại cơ sở dữ liệu này chưa được hỗ trợ.",
     },
     storage: {
       failed: "Không thể đọc kho dữ liệu cục bộ.",
       invalidCursor: "Con trỏ trang không hợp lệ hoặc đã hết hạn.",
       unknownSortField: "Trường sắp xếp này không được hỗ trợ.",
+      invalidInput: "Một số thông tin kết nối không hợp lệ.",
+      saveFailed: "Không thể lưu kết nối cơ sở dữ liệu.",
     },
   },
 }

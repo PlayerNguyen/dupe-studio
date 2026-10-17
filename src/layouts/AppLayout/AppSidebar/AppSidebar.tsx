@@ -32,6 +32,7 @@ import { useModal } from "../../../modals";
 import { useAppStore } from "../../../store/appStore";
 import { POPOVER_TRANSITION_DURATION, smoothTransition } from "../../../theme";
 import { cn } from "../../../utils/cn";
+import { DatabaseInstanceList } from "./DatabaseInstanceList";
 
 /** Sidebar width in pixels when expanded. */
 const EXPANDED_WIDTH = 264;
@@ -179,8 +180,9 @@ function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
  * Primary application sidebar.
  *
  * Renders the brand header, the navigation model from
- * `src/config/configureSidebar.tsx`, and a footer settings menu (color scheme
- * + language). The collapsed/expanded state is owned by the Zustand store
+ * `src/config/configureSidebar.tsx`, the saved-instance list
+ * (`DatabaseInstanceList`) and a footer settings menu (color scheme +
+ * language). The collapsed/expanded state is owned by the Zustand store
  * (`useAppStore`) so it persists across route changes.
  *
  * @returns The rendered sidebar navigation rail.
@@ -282,6 +284,8 @@ export function AppSidebar() {
               </Stack>
             </Stack>
           ))}
+
+          <DatabaseInstanceList collapsed={collapsed} />
         </Stack>
       </ScrollArea>
 
