@@ -88,12 +88,30 @@ impl DatabaseInstanceService {
     /// Inserts a new saved connection and returns it.
     ///
     /// The UUID and timestamps are generated here / by SQLite; callers do not
-    /// provide them.
+    /// provide them. Names and kinds are trimmed before they are stored.
     ///
     /// # Errors
     ///
-    /// Returns [`AppDbError::Sqlx`] when the insert fails.
+    /// Returns [`AppDbError::InvalidInput`] when the name or kind is blank, or
+    /// when an explicit port is outside `1..=65535`. Returns
+    /// [`AppDbError::Sqlx`] when the insert fails.
     pub async fn create(&self, new: NewDatabaseInstance) -> Result<DatabaseInstance, AppDbError> {
+        let mut new = new;
+        new.name = new.name.trim().to_string();
+        new.kind = new.kind.trim().to_string();
+
+        if new.name.is_empty() {
+            return Err(AppDbError::InvalidInput("name"));
+        }
+        if new.kind.is_empty() {
+            return Err(AppDbError::InvalidInput("kind"));
+        }
+        if let Some(port) = new.port
+            && !(1..=65535).contains(&port)
+        {
+            return Err(AppDbError::InvalidInput("port"));
+        }
+
         let row = sqlx::query_as::<_, DatabaseInstance>(
             "INSERT INTO database_instances \
                (id, name, kind, host, port, database_name, username, secret_ref, is_favorite) \
@@ -156,6 +174,75 @@ mod tests {
                 .await
                 .unwrap();
         }
+    }
+
+    #[tokio::test]
+    async fn create_persists_generated_fields() {
+        let store = AppDb::connect_in_memory().await.unwrap();
+
+        let created = store
+            .database_instances()
+            .create(NewDatabaseInstance {
+                name: "  local mysql  ".into(),
+                kind: " mysql ".into(),
+                host: Some("127.0.0.1".into()),
+                port: Some(3306),
+                database_name: Some("app".into()),
+                username: Some("root".into()),
+                secret_ref: None,
+                is_favorite: true,
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(created.name, "local mysql");
+        assert_eq!(created.kind, "mysql");
+        assert!(created.is_favorite);
+        assert!(!created.id.is_empty());
+        assert!(!created.created_at.is_empty());
+        assert!(!created.updated_at.is_empty());
+
+        let fetched = store
+            .database_instances()
+            .get(&created.id)
+            .await
+            .unwrap()
+            .expect("created row should be readable");
+        assert_eq!(fetched, created);
+    }
+
+    #[tokio::test]
+    async fn create_rejects_invalid_input() {
+        let store = AppDb::connect_in_memory().await.unwrap();
+        let service = store.database_instances();
+        let valid = || NewDatabaseInstance {
+            name: "local".into(),
+            kind: "mysql".into(),
+            host: None,
+            port: None,
+            database_name: None,
+            username: None,
+            secret_ref: None,
+            is_favorite: false,
+        };
+
+        let blank_name = service
+            .create(NewDatabaseInstance {
+                name: "   ".into(),
+                ..valid()
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(blank_name, AppDbError::InvalidInput("name")));
+
+        let bad_port = service
+            .create(NewDatabaseInstance {
+                port: Some(0),
+                ..valid()
+            })
+            .await
+            .unwrap_err();
+        assert!(matches!(bad_port, AppDbError::InvalidInput("port")));
     }
 
     #[tokio::test]

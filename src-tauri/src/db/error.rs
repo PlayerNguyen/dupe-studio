@@ -85,4 +85,41 @@ impl DbError {
             message: message.into(),
         }
     }
+
+    /// Returns the stable i18n key the frontend translates for this error.
+    ///
+    /// Backend commands return these keys (never user-facing prose), and the
+    /// frontend resolves them with `translateErrorKey`, falling back to
+    /// `errors.unknown` for a key it does not know. Keep the keys in
+    /// `errors.database.*`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dupe_studio_lib::db::DbError;
+    ///
+    /// assert_eq!(
+    ///     DbError::Unsupported("oracle".into()).i18n_key(),
+    ///     "errors.database.unsupportedEngine"
+    /// );
+    /// assert_eq!(
+    ///     DbError::Config("host must not be empty".into()).i18n_key(),
+    ///     "errors.database.invalidConfig"
+    /// );
+    /// assert_eq!(
+    ///     DbError::NotConnected.i18n_key(),
+    ///     "errors.database.connectionFailed"
+    /// );
+    /// ```
+    pub fn i18n_key(&self) -> &'static str {
+        match self {
+            Self::Unsupported(_) => "errors.database.unsupportedEngine",
+            Self::Config(_) => "errors.database.invalidConfig",
+            Self::Connection(_)
+            | Self::Query(_)
+            | Self::NotConnected
+            | Self::Decode { .. }
+            | Self::Driver(_) => "errors.database.connectionFailed",
+        }
+    }
 }

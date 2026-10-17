@@ -210,6 +210,37 @@ async fn db_query(
     database.query(&sql, &params).await.map_err(stringify)
 }
 
+/// Opens a throwaway connection, pings it and closes it.
+///
+/// Used by the add-instance form's "Test connection" action. Unlike
+/// [`db_connect`], this never touches the active [`DbState`] connection, so a
+/// failed test cannot drop the connection the user is already working with.
+///
+/// # Arguments
+///
+/// * `config` - Backend kind plus connection fields or a full DSN.
+///
+/// # Returns
+///
+/// `Ok(())` when the server answers the ping.
+///
+/// # Errors
+///
+/// Returns an i18n key (`errors.database.*`) when validation, connecting or the
+/// ping fails; the frontend translates it with `translateErrorKey`.
+#[tauri::command]
+async fn db_test_connection(config: ConnectionConfig) -> Result<(), String> {
+    let database = Database::connect(config)
+        .await
+        .map_err(|error| error.i18n_key().to_string())?;
+
+    let ping = database.ping().await;
+    let close = database.close().await;
+
+    ping.map_err(|error| error.i18n_key().to_string())?;
+    close.map_err(|error| error.i18n_key().to_string())
+}
+
 /// Renders a [`DbError`] for the frontend.
 fn stringify(error: DbError) -> String {
     error.to_string()
@@ -226,7 +257,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
         greet,
         app_version,
         commands::audit::storage_query_audit,
-        commands::database_instances::storage_list_instances
+        commands::database_instances::storage_list_instances,
+        commands::database_instances::storage_create_instance
     ])
 }
 
@@ -287,10 +319,12 @@ pub fn run() {
             db_connect,
             db_disconnect,
             db_ping,
+            db_test_connection,
             db_execute,
             db_query,
             commands::audit::storage_query_audit,
-            commands::database_instances::storage_list_instances
+            commands::database_instances::storage_list_instances,
+            commands::database_instances::storage_create_instance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

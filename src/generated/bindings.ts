@@ -85,6 +85,35 @@ async storageListInstances(page: OffsetPagination, sort: SortSpec) : Promise<Res
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Creates a saved database connection.
+ * 
+ * # Arguments
+ * 
+ * * `input` - Instance metadata from the add-instance modal: display name,
+ * engine kind, and the connection fields for that engine. Secrets are not
+ * accepted here; `secret_ref` stays `None` until the OS keychain integration
+ * lands.
+ * * `state` - Injected managed [`AppDb`].
+ * 
+ * # Returns
+ * 
+ * The persisted [`DatabaseInstance`], including its generated `id` and
+ * timestamps.
+ * 
+ * # Errors
+ * 
+ * Returns `errors.storage.invalidInput` when the name, kind or port is not
+ * valid, or `errors.storage.saveFailed` when the insert fails.
+ */
+async storageCreateInstance(input: NewDatabaseInstance) : Promise<Result<DatabaseInstance, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("storage_create_instance", { input }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -232,6 +261,42 @@ created_at: string;
  * Last update timestamp (ISO-8601 UTC).
  */
 updated_at: string }
+/**
+ * Input for [`DatabaseInstanceService::create`](crate::app_db::DatabaseInstanceService::create).
+ */
+export type NewDatabaseInstance = { 
+/**
+ * Display name chosen by the user.
+ */
+name: string; 
+/**
+ * Backend kind, for example `mysql`.
+ */
+kind: string; 
+/**
+ * Host name or address.
+ */
+host: string | null; 
+/**
+ * TCP port.
+ */
+port: number | null; 
+/**
+ * Default database/schema name.
+ */
+database_name: string | null; 
+/**
+ * Login user.
+ */
+username: string | null; 
+/**
+ * Keychain reference for the secret.
+ */
+secret_ref: string | null; 
+/**
+ * Whether the user pinned the connection. Defaults to `false`.
+ */
+is_favorite?: boolean }
 /**
  * Offset request as sent by the frontend.
  * 

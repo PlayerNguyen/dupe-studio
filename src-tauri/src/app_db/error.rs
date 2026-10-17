@@ -31,6 +31,13 @@ pub enum AppDbError {
     /// A requested record does not exist.
     #[error("`{0}` was not found in the application store")]
     NotFound(String),
+
+    /// A write input was rejected before it reached SQLite.
+    ///
+    /// The payload is a field name, not user-facing prose; the frontend
+    /// translates [`AppDbError::i18n_key`] instead.
+    #[error("invalid input for `{0}`")]
+    InvalidInput(&'static str),
 }
 
 impl AppDbError {
@@ -58,6 +65,7 @@ impl AppDbError {
             Self::Pagination(PaginationError::UnknownSortField(_)) => {
                 "errors.storage.unknownSortField"
             }
+            Self::InvalidInput(_) => "errors.storage.invalidInput",
             Self::Io(_) | Self::Migration(_) | Self::Sqlx(_) | Self::NotFound(_) => {
                 "errors.storage.failed"
             }
