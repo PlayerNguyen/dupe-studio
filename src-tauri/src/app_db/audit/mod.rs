@@ -10,8 +10,7 @@ mod query;
 mod sort;
 
 use super::{AppDb, AppDbError};
-use crate::pagination::sql;
-use crate::pagination::{CursorKey, CursorPageQuery, Page, PageDirection, SortSpec};
+use crate::pagination::{CursorPageQuery, Page, PageDirection, SortSpec};
 
 pub use models::{AuditLogEntry, AuditStatus, NewAuditLogEntry};
 
@@ -97,101 +96,37 @@ impl AuditService {
         page: &impl CursorPageQuery,
         sort: &SortSpec,
     ) -> Result<Page<AuditLogEntry>, AppDbError> {
+        let pool = self.db.pool();
         let limit = page.limit();
-        let direction = page.direction();
         let resolved = sort::resolve(sort)?;
         let fingerprint = sort.fingerprint();
 
         let Some(token) = page.cursor() else {
-            // First page: natural order, fetch one extra row to detect `hasMore`.
-            let order = sql::order_by(&resolved);
-            let mut rows = sqlx::query_as::<_, AuditLogEntry>(&format!(
-                "SELECT * FROM audit_log {order} LIMIT ?"
-            ))
-            .bind((limit + 1) as i64)
-            .fetch_all(self.db.pool())
-            .await?;
+            // The first page has nothing before it, so the only cursor it can
+            // hand out is the forward one.
+            let fetched = query::first_page(pool, &resolved, limit).await?;
+            let (next, _) = fetched.cursors(&resolved, &fingerprint, PageDirection::Next)?;
 
-            let has_more = rows.len() as u32 > limit;
-            rows.truncate(limit as usize);
-
-            let next_cursor = if has_more {
-                match rows.last() {
-                    Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
-                    None => None,
-                }
-            } else {
-                None
-            };
-
-            return Ok(Page::cursor(rows, limit, has_more, next_cursor, None));
+            return Ok(Page::cursor(
+                fetched.rows,
+                limit,
+                fetched.has_more,
+                next,
+                None,
+            ));
         };
 
+        let direction = page.direction();
         let cursor = query::decode_cursor(token, &fingerprint)?;
-
-        let (predicate, binds) = sql::keyset_predicate(&resolved, &cursor, direction)?;
-        let reversed = direction == PageDirection::Prev;
-        let order_columns = if reversed {
-            sql::flip_directions(&resolved)
-        } else {
-            resolved.clone()
-        };
-        let order = sql::order_by(&order_columns);
-
-        let statement = format!("SELECT * FROM audit_log WHERE {predicate} {order} LIMIT ?");
-        let mut fetch = sqlx::query_as::<_, AuditLogEntry>(&statement);
-        for key in binds {
-            fetch = match key {
-                CursorKey::Int(value) => fetch.bind(value),
-                CursorKey::Text(value) => fetch.bind(value),
-                CursorKey::Bool(value) => fetch.bind(value),
-            };
-        }
-        fetch = fetch.bind((limit + 1) as i64);
-
-        let mut rows = fetch.fetch_all(self.db.pool()).await?;
-        let has_more = rows.len() as u32 > limit;
-        rows.truncate(limit as usize);
-        if reversed {
-            rows.reverse();
-        }
-
-        let (next_cursor, prev_cursor) = if reversed {
-            let prev = if has_more {
-                match rows.first() {
-                    Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
-                    None => None,
-                }
-            } else {
-                None
-            };
-            let next = match rows.last() {
-                Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
-                None => None,
-            };
-            (next, prev)
-        } else {
-            let next = if has_more {
-                match rows.last() {
-                    Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
-                    None => None,
-                }
-            } else {
-                None
-            };
-            let prev = match rows.first() {
-                Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
-                None => None,
-            };
-            (next, prev)
-        };
+        let fetched = query::keyset_page(pool, &resolved, &cursor, direction, limit).await?;
+        let (next, prev) = fetched.cursors(&resolved, &fingerprint, direction)?;
 
         Ok(Page::cursor(
-            rows,
+            fetched.rows,
             limit,
-            has_more,
-            next_cursor,
-            prev_cursor,
+            fetched.has_more,
+            next,
+            prev,
         ))
     }
 }
