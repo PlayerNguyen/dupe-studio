@@ -3,7 +3,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
-
+import {
+  SIDEBAR_COMPACTED_WIDTH,
+  SIDEBAR_EXPANDED_WIDTH,
+} from "../../../config/sidebarLayout";
 import { useAppStore } from "../../../store/appStore";
 import { AppSidebar } from ".";
 
@@ -70,17 +73,21 @@ describe("AppSidebar", () => {
     expect(screen.getByTestId("pathname")).toHaveTextContent("/settings");
   });
 
-  it("toggles the collapsed state through the store", async () => {
+  it("toggles between the compacted rail and the expanded width", async () => {
     const user = userEvent.setup();
     renderSidebar();
 
     await user.click(screen.getByLabelText("Toggle sidebar"));
 
-    expect(useAppStore.getState().sidebarCollapsed).toBe(true);
+    expect(useAppStore.getState().sidebarWidth).toBe(SIDEBAR_COMPACTED_WIDTH);
+
+    await user.click(screen.getByLabelText("Toggle sidebar"));
+
+    expect(useAppStore.getState().sidebarWidth).toBe(SIDEBAR_EXPANDED_WIDTH);
   });
 
-  it("renders an icon rail with tooltipped labels when collapsed", () => {
-    useAppStore.getState().setSidebarCollapsed(true);
+  it("renders an icon rail with tooltipped labels when compacted", () => {
+    useAppStore.getState().setSidebarWidth(SIDEBAR_COMPACTED_WIDTH);
 
     renderSidebar();
 
