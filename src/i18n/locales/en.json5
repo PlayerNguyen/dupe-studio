@@ -63,6 +63,9 @@
       failed: "Could not read the local data store.",
       invalidCursor: "That page cursor is invalid or has expired.",
       unknownSortField: "That sort field is not supported.",
+      secretMissing: "The saved password is missing. Enter it again.",
+      secretStoreUnavailable: "The system credential store is unavailable.",
+      secretWriteFailed: "Could not save the password to the credential store.",
     },
   },
 }
