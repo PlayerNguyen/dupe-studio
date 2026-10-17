@@ -35,32 +35,6 @@ async appVersion() : Promise<string> {
     return await TAURI_INVOKE("app_version");
 },
 /**
- * Returns one offset-paginated page of saved database connections.
- * 
- * # Arguments
- * 
- * * `page` - Offset/limit request from the frontend.
- * * `sort` - Requested sort; fields are validated against an allowlist.
- * * `state` - Injected managed [`AppDb`].
- * 
- * # Returns
- * 
- * A [`Page`] of [`DatabaseInstance`] rows, including `total`.
- * 
- * # Errors
- * 
- * Returns an i18n key string (`errors.storage.*`) when the request is invalid
- * or the query fails.
- */
-async storageListInstances(page: OffsetPagination, sort: SortSpec) : Promise<Result<Page<DatabaseInstance>, string>> {
-    try {
-    return { status: "ok", data: await TAURI_INVOKE("storage_list_instances", { page, sort }) };
-} catch (e) {
-    if(e instanceof Error) throw e;
-    else return { status: "error", error: e  as any };
-}
-},
-/**
  * Returns one cursor-paginated page of audit events.
  * 
  * # Arguments
@@ -81,6 +55,32 @@ async storageListInstances(page: OffsetPagination, sort: SortSpec) : Promise<Res
 async storageQueryAudit(page: CursorPagination, sort: SortSpec) : Promise<Result<Page<AuditLogEntry>, string>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("storage_query_audit", { page, sort }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Returns one offset-paginated page of saved database connections.
+ * 
+ * # Arguments
+ * 
+ * * `page` - Offset/limit request from the frontend.
+ * * `sort` - Requested sort; fields are validated against an allowlist.
+ * * `state` - Injected managed [`AppDb`].
+ * 
+ * # Returns
+ * 
+ * A [`Page`] of [`DatabaseInstance`] rows, including `total`.
+ * 
+ * # Errors
+ * 
+ * Returns an i18n key string (`errors.storage.*`) when the request is invalid
+ * or the query fails.
+ */
+async storageListInstances(page: OffsetPagination, sort: SortSpec) : Promise<Result<Page<DatabaseInstance>, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("storage_list_instances", { page, sort }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -141,8 +141,32 @@ duration_ms: number | null }
 /**
  * Cursor request as sent by the frontend.
  * 
- * `cursor` is opaque; pass back the `nextCursor`/`prevCursor` from a previous
- * page. `direction` selects forward or backward paging.
+ * # The `cursor` token
+ * 
+ * `cursor` is **opaque**: the frontend must treat it as an unreadable blob and
+ * only ever send back a token this API produced (`nextCursor` / `prevCursor`
+ * from a previous page). It never needs to construct or parse one.
+ * 
+ * Under the hood a token is the `base64url` (no padding) encoding of this JSON
+ * payload:
+ * 
+ * ```json
+ * { "v": 1, "fingerprint": "status:desc,id:asc", "keys": [{ "text": "success" }] }
+ * ```
+ * 
+ * * `v` — cursor format version. A token carrying any other version is
+ * rejected with [`PaginationError::InvalidCursor`], which keeps the format
+ * free to change in a later release.
+ * * `fingerprint` — the `SortSpec` signature the cursor was minted for.
+ * Replaying a cursor against a different sort is rejected rather than
+ * silently returning the wrong rows (the boundary keys only mean something
+ * for the order they were taken from).
+ * * `keys` — the sort values of the boundary row, in resolved sort order and
+ * including the tiebreaker repositories append automatically. Each entry is
+ * `{ "int": 7 }`, `{ "text": "abc" }` or `{ "bool": true }`.
+ * 
+ * `cursor: None` means "start at the first page" and is the only case where
+ * `direction` is ignored: the repositories always begin in natural sort order.
  */
 export type CursorPagination = { 
 /**

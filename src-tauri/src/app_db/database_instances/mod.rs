@@ -1,63 +1,38 @@
-//! Repository methods for saved database connections.
+//! Saved-connection domain: models, sort allowlist and the
+//! [`DatabaseInstanceService`].
+//!
+//! Everything that reads or writes `database_instances` lives in this folder.
+//! Callers get a service from
+//! [`AppDb::database_instances`](super::AppDb::database_instances) instead of
+//! reaching for the pool.
+
+mod models;
+mod sort;
 
 use uuid::Uuid;
 
-use super::{AppDb, AppDbError, DatabaseInstance, NewDatabaseInstance};
-use crate::pagination::sql::{self, OrderedColumn, SortableColumn};
-use crate::pagination::{OffsetPageQuery, Page, SortDirection, SortSpec};
+use super::{AppDb, AppDbError};
+use crate::pagination::sql;
+use crate::pagination::{OffsetPageQuery, Page, SortSpec};
 
-/// Columns the frontend may sort `database_instances` by.
-const SORT_COLUMNS: &[SortableColumn] = &[
-    SortableColumn {
-        field: "name",
-        expression: "name",
-    },
-    SortableColumn {
-        field: "kind",
-        expression: "kind",
-    },
-    SortableColumn {
-        field: "isFavorite",
-        expression: "is_favorite",
-    },
-    SortableColumn {
-        field: "createdAt",
-        expression: "created_at",
-    },
-    SortableColumn {
-        field: "updatedAt",
-        expression: "updated_at",
-    },
-];
+pub use models::{DatabaseInstance, NewDatabaseInstance};
 
-/// Default order: favourites first, then name, then id.
-fn default_order() -> Vec<OrderedColumn> {
-    vec![
-        OrderedColumn {
-            expression: "is_favorite",
-            direction: SortDirection::Desc,
-        },
-        OrderedColumn {
-            expression: "name",
-            direction: SortDirection::Asc,
-        },
-        OrderedColumn {
-            expression: "id",
-            direction: SortDirection::Asc,
-        },
-    ]
+/// Read/write service for saved database connections.
+///
+/// Cheap to clone: it only holds a handle to the shared connection pool, so
+/// request one per call through
+/// [`AppDb::database_instances`](super::AppDb::database_instances).
+#[derive(Debug, Clone)]
+pub struct DatabaseInstanceService {
+    db: AppDb,
 }
 
-/// Resolves the requested sort, falling back to [`default_order`].
-fn resolve(sort: &SortSpec) -> Result<Vec<OrderedColumn>, AppDbError> {
-    if sort.is_empty() {
-        Ok(default_order())
-    } else {
-        Ok(sql::resolve_order(sort, SORT_COLUMNS, "id")?)
+impl DatabaseInstanceService {
+    /// Binds the service to the shared [`AppDb`] handle.
+    pub(super) fn new(db: AppDb) -> Self {
+        Self { db }
     }
-}
 
-impl AppDb {
     /// Lists saved connections for one page, with a total count.
     ///
     /// The rows and the count are read inside a single transaction, so `total`
@@ -67,16 +42,16 @@ impl AppDb {
     ///
     /// Returns [`AppDbError::Pagination`] for an unknown sort field, or
     /// [`AppDbError::Sqlx`] when a query fails.
-    pub async fn list_instances(
+    pub async fn list(
         &self,
         page: &impl OffsetPageQuery,
         sort: &SortSpec,
     ) -> Result<Page<DatabaseInstance>, AppDbError> {
         let limit = page.limit();
         let offset = page.offset();
-        let order = sql::order_by(&resolve(sort)?);
+        let order = sql::order_by(&sort::resolve(sort)?);
 
-        let mut tx = self.pool().begin().await?;
+        let mut tx = self.db.pool().begin().await?;
 
         let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM database_instances")
             .fetch_one(&mut *tx)
@@ -100,11 +75,11 @@ impl AppDb {
     /// # Errors
     ///
     /// Returns [`AppDbError::Sqlx`] when the query fails.
-    pub async fn get_instance(&self, id: &str) -> Result<Option<DatabaseInstance>, AppDbError> {
+    pub async fn get(&self, id: &str) -> Result<Option<DatabaseInstance>, AppDbError> {
         let row =
             sqlx::query_as::<_, DatabaseInstance>("SELECT * FROM database_instances WHERE id = ?")
                 .bind(id)
-                .fetch_optional(self.pool())
+                .fetch_optional(self.db.pool())
                 .await?;
 
         Ok(row)
@@ -118,10 +93,7 @@ impl AppDb {
     /// # Errors
     ///
     /// Returns [`AppDbError::Sqlx`] when the insert fails.
-    pub async fn create_instance(
-        &self,
-        new: NewDatabaseInstance,
-    ) -> Result<DatabaseInstance, AppDbError> {
+    pub async fn create(&self, new: NewDatabaseInstance) -> Result<DatabaseInstance, AppDbError> {
         let row = sqlx::query_as::<_, DatabaseInstance>(
             "INSERT INTO database_instances \
                (id, name, kind, host, port, database_name, username, secret_ref, is_favorite) \
@@ -137,7 +109,7 @@ impl AppDb {
         .bind(new.username)
         .bind(new.secret_ref)
         .bind(new.is_favorite)
-        .fetch_one(self.pool())
+        .fetch_one(self.db.pool())
         .await?;
 
         Ok(row)
@@ -152,10 +124,10 @@ impl AppDb {
     /// # Errors
     ///
     /// Returns [`AppDbError::Sqlx`] when the delete fails.
-    pub async fn delete_instance(&self, id: &str) -> Result<bool, AppDbError> {
+    pub async fn delete(&self, id: &str) -> Result<bool, AppDbError> {
         let result = sqlx::query("DELETE FROM database_instances WHERE id = ?")
             .bind(id)
-            .execute(self.pool())
+            .execute(self.db.pool())
             .await?;
 
         Ok(result.rows_affected() > 0)
@@ -165,12 +137,13 @@ impl AppDb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pagination::OffsetPagination;
+    use crate::pagination::{OffsetPagination, SortDirection, SortField};
 
     async fn seed(store: &AppDb, count: usize) {
         for index in 0..count {
             store
-                .create_instance(NewDatabaseInstance {
+                .database_instances()
+                .create(NewDatabaseInstance {
                     name: format!("db-{index:02}"),
                     kind: "mysql".into(),
                     host: Some("127.0.0.1".into()),
@@ -191,7 +164,8 @@ mod tests {
         seed(&store, 5).await;
 
         let page = store
-            .list_instances(
+            .database_instances()
+            .list(
                 &OffsetPagination {
                     offset: 0,
                     limit: 2,
@@ -209,7 +183,8 @@ mod tests {
         assert!(page.items[0].is_favorite);
 
         let last = store
-            .list_instances(
+            .database_instances()
+            .list(
                 &OffsetPagination {
                     offset: 4,
                     limit: 2,
@@ -228,13 +203,14 @@ mod tests {
         seed(&store, 3).await;
 
         let page = store
-            .list_instances(
+            .database_instances()
+            .list(
                 &OffsetPagination {
                     offset: 0,
                     limit: 10,
                 },
                 &SortSpec {
-                    fields: vec![crate::pagination::SortField {
+                    fields: vec![SortField {
                         column: "name".into(),
                         direction: SortDirection::Desc,
                     }],
@@ -251,10 +227,11 @@ mod tests {
         let store = AppDb::connect_in_memory().await.unwrap();
 
         let err = store
-            .list_instances(
+            .database_instances()
+            .list(
                 &OffsetPagination::default(),
                 &SortSpec {
-                    fields: vec![crate::pagination::SortField {
+                    fields: vec![SortField {
                         column: "secret".into(),
                         direction: SortDirection::Asc,
                     }],

@@ -1,81 +1,69 @@
-//! Repository methods for the audit log.
+//! Audit-log domain: models, sort allowlist and the [`AuditService`].
+//!
+//! Everything that reads or writes `audit_log` lives in this folder: the row
+//! models ([`models`]), the columns the frontend may sort by ([`sort`]) and the
+//! cursor arithmetic ([`query`]). Callers get a service from
+//! [`AppDb::audit`](super::AppDb::audit) instead of reaching for the pool.
 
-use super::{AppDb, AppDbError, AuditLogEntry, NewAuditLogEntry};
-use crate::pagination::sql::{self, OrderedColumn, SortableColumn};
-use crate::pagination::{
-    Cursor, CursorKey, CursorPageQuery, Page, PageDirection, PaginationError, SortDirection,
-    SortSpec,
-};
+mod models;
+mod query;
+mod sort;
 
-/// Columns the frontend may sort the audit log by.
-const SORT_COLUMNS: &[SortableColumn] = &[
-    SortableColumn {
-        field: "occurredAt",
-        expression: "occurred_at",
-    },
-    SortableColumn {
-        field: "category",
-        expression: "category",
-    },
-    SortableColumn {
-        field: "action",
-        expression: "action",
-    },
-    SortableColumn {
-        field: "status",
-        expression: "status",
-    },
-];
+use super::{AppDb, AppDbError};
+use crate::pagination::sql;
+use crate::pagination::{CursorKey, CursorPageQuery, Page, PageDirection, SortSpec};
 
-/// Default order: newest first.
-fn default_order() -> Vec<OrderedColumn> {
-    vec![OrderedColumn {
-        expression: "id",
-        direction: SortDirection::Desc,
-    }]
+pub use models::{AuditLogEntry, AuditStatus, NewAuditLogEntry};
+
+/// Read/write service for the audit log.
+///
+/// Cheap to clone: it only holds a handle to the shared connection pool, so
+/// request one per call through [`AppDb::audit`](super::AppDb::audit).
+#[derive(Debug, Clone)]
+pub struct AuditService {
+    db: AppDb,
 }
 
-/// Resolves the requested sort, falling back to [`default_order`].
-fn resolve(sort: &SortSpec) -> Result<Vec<OrderedColumn>, AppDbError> {
-    if sort.is_empty() {
-        Ok(default_order())
-    } else {
-        Ok(sql::resolve_order(sort, SORT_COLUMNS, "id")?)
+impl AuditService {
+    /// Binds the service to the shared [`AppDb`] handle.
+    pub(super) fn new(db: AppDb) -> Self {
+        Self { db }
     }
-}
 
-/// Reads the sort-key value of `expression` from an audit row.
-fn key_of(row: &AuditLogEntry, expression: &str) -> CursorKey {
-    match expression {
-        "occurred_at" => CursorKey::Text(row.occurred_at.clone()),
-        "category" => CursorKey::Text(row.category.clone()),
-        "action" => CursorKey::Text(row.action.clone()),
-        "status" => CursorKey::Text(row.status.clone()),
-        // `id` (the tiebreaker) and anything else use the numeric id.
-        _ => CursorKey::Int(row.id),
-    }
-}
-
-/// Encodes the cursor pointing at `row`.
-fn encode_cursor(
-    fingerprint: &str,
-    resolved: &[OrderedColumn],
-    row: &AuditLogEntry,
-) -> Result<String, AppDbError> {
-    let keys = resolved
-        .iter()
-        .map(|column| key_of(row, column.expression))
-        .collect();
-    Ok(Cursor::new(fingerprint, keys).encode()?)
-}
-
-impl AppDb {
     /// Appends an audit event and returns its id.
+    ///
+    /// `entry` fields are stored as-is; the timestamp is filled in by SQLite.
+    /// Audit events are append-only — there is no update or delete counterpart.
     ///
     /// # Errors
     ///
     /// Returns [`AppDbError::Sqlx`] when the insert fails.
-    pub async fn record_audit(&self, entry: NewAuditLogEntry) -> Result<i64, AppDbError> {
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use dupe_studio_lib::app_db::{AppDb, AuditStatus, NewAuditLogEntry};
+    ///
+    /// # async fn run() -> Result<(), dupe_studio_lib::app_db::AppDbError> {
+    /// # let store = AppDb::open("dupe-studio.sqlite3").await?;
+    /// let id = store
+    ///     .audit()
+    ///     .record(NewAuditLogEntry {
+    ///         category: "app".into(),
+    ///         action: "migrate".into(),
+    ///         status: AuditStatus::Success,
+    ///         instance_id: None,
+    ///         message_key: Some("audit.app.migrate".into()),
+    ///         detail: None,
+    ///         duration_ms: None,
+    ///     })
+    ///     .await?;
+    ///
+    /// assert!(id > 0);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn record(&self, entry: NewAuditLogEntry) -> Result<i64, AppDbError> {
         let result = sqlx::query(
             "INSERT INTO audit_log \
                (category, action, status, instance_id, message_key, detail, duration_ms) \
@@ -88,7 +76,7 @@ impl AppDb {
         .bind(entry.message_key)
         .bind(entry.detail)
         .bind(entry.duration_ms)
-        .execute(self.pool())
+        .execute(self.db.pool())
         .await?;
 
         Ok(result.last_insert_rowid())
@@ -104,14 +92,14 @@ impl AppDb {
     ///
     /// Returns [`AppDbError::Pagination`] for a malformed/stale cursor or an
     /// unknown sort field, or [`AppDbError::Sqlx`] when a query fails.
-    pub async fn query_audit(
+    pub async fn query(
         &self,
         page: &impl CursorPageQuery,
         sort: &SortSpec,
     ) -> Result<Page<AuditLogEntry>, AppDbError> {
         let limit = page.limit();
         let direction = page.direction();
-        let resolved = resolve(sort)?;
+        let resolved = sort::resolve(sort)?;
         let fingerprint = sort.fingerprint();
 
         let Some(token) = page.cursor() else {
@@ -121,7 +109,7 @@ impl AppDb {
                 "SELECT * FROM audit_log {order} LIMIT ?"
             ))
             .bind((limit + 1) as i64)
-            .fetch_all(self.pool())
+            .fetch_all(self.db.pool())
             .await?;
 
             let has_more = rows.len() as u32 > limit;
@@ -129,7 +117,7 @@ impl AppDb {
 
             let next_cursor = if has_more {
                 match rows.last() {
-                    Some(row) => Some(encode_cursor(&fingerprint, &resolved, row)?),
+                    Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
                     None => None,
                 }
             } else {
@@ -139,12 +127,7 @@ impl AppDb {
             return Ok(Page::cursor(rows, limit, has_more, next_cursor, None));
         };
 
-        let cursor = Cursor::decode(token)?;
-        if cursor.fingerprint != fingerprint {
-            return Err(AppDbError::Pagination(PaginationError::InvalidCursor(
-                "cursor does not match the requested sort".into(),
-            )));
-        }
+        let cursor = query::decode_cursor(token, &fingerprint)?;
 
         let (predicate, binds) = sql::keyset_predicate(&resolved, &cursor, direction)?;
         let reversed = direction == PageDirection::Prev;
@@ -156,17 +139,17 @@ impl AppDb {
         let order = sql::order_by(&order_columns);
 
         let statement = format!("SELECT * FROM audit_log WHERE {predicate} {order} LIMIT ?");
-        let mut query = sqlx::query_as::<_, AuditLogEntry>(&statement);
+        let mut fetch = sqlx::query_as::<_, AuditLogEntry>(&statement);
         for key in binds {
-            query = match key {
-                CursorKey::Int(value) => query.bind(value),
-                CursorKey::Text(value) => query.bind(value),
-                CursorKey::Bool(value) => query.bind(value),
+            fetch = match key {
+                CursorKey::Int(value) => fetch.bind(value),
+                CursorKey::Text(value) => fetch.bind(value),
+                CursorKey::Bool(value) => fetch.bind(value),
             };
         }
-        query = query.bind((limit + 1) as i64);
+        fetch = fetch.bind((limit + 1) as i64);
 
-        let mut rows = query.fetch_all(self.pool()).await?;
+        let mut rows = fetch.fetch_all(self.db.pool()).await?;
         let has_more = rows.len() as u32 > limit;
         rows.truncate(limit as usize);
         if reversed {
@@ -176,28 +159,28 @@ impl AppDb {
         let (next_cursor, prev_cursor) = if reversed {
             let prev = if has_more {
                 match rows.first() {
-                    Some(row) => Some(encode_cursor(&fingerprint, &resolved, row)?),
+                    Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
                     None => None,
                 }
             } else {
                 None
             };
             let next = match rows.last() {
-                Some(row) => Some(encode_cursor(&fingerprint, &resolved, row)?),
+                Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
                 None => None,
             };
             (next, prev)
         } else {
             let next = if has_more {
                 match rows.last() {
-                    Some(row) => Some(encode_cursor(&fingerprint, &resolved, row)?),
+                    Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
                     None => None,
                 }
             } else {
                 None
             };
             let prev = match rows.first() {
-                Some(row) => Some(encode_cursor(&fingerprint, &resolved, row)?),
+                Some(row) => Some(query::encode_cursor(&fingerprint, &resolved, row)?),
                 None => None,
             };
             (next, prev)
@@ -216,15 +199,16 @@ impl AppDb {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pagination::{CursorPagination, SortField};
+    use crate::pagination::{CursorPagination, SortDirection, SortField};
 
     async fn seed(store: &AppDb, count: i64) {
         for index in 0..count {
             store
-                .record_audit(NewAuditLogEntry {
+                .audit()
+                .record(NewAuditLogEntry {
                     category: "app".into(),
                     action: format!("action-{index}"),
-                    status: super::super::AuditStatus::Success,
+                    status: AuditStatus::Success,
                     instance_id: None,
                     message_key: Some("audit.app.migrate".into()),
                     detail: None,
@@ -249,7 +233,8 @@ mod tests {
         seed(&store, 5).await;
 
         let first = store
-            .query_audit(&next(None), &SortSpec::default())
+            .audit()
+            .query(&next(None), &SortSpec::default())
             .await
             .unwrap();
         assert_eq!(first.items.len(), 2);
@@ -257,7 +242,8 @@ mod tests {
         assert!(first.page_info.has_more);
 
         let second = store
-            .query_audit(
+            .audit()
+            .query(
                 &next(first.page_info.next_cursor.clone()),
                 &SortSpec::default(),
             )
@@ -267,7 +253,8 @@ mod tests {
 
         // Walking back returns the first page again.
         let back = store
-            .query_audit(
+            .audit()
+            .query(
                 &CursorPagination {
                     cursor: second.page_info.prev_cursor.clone(),
                     direction: PageDirection::Prev,
@@ -286,13 +273,15 @@ mod tests {
         seed(&store, 3).await;
 
         let by_default = store
-            .query_audit(&next(None), &SortSpec::default())
+            .audit()
+            .query(&next(None), &SortSpec::default())
             .await
             .unwrap();
         let cursor = by_default.page_info.next_cursor.clone();
 
         let err = store
-            .query_audit(
+            .audit()
+            .query(
                 &next(cursor),
                 &SortSpec {
                     fields: vec![SortField {

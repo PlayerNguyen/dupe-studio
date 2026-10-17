@@ -32,3 +32,35 @@ pub enum AppDbError {
     #[error("`{0}` was not found in the application store")]
     NotFound(String),
 }
+
+impl AppDbError {
+    /// Returns the stable i18n key the frontend translates for this error.
+    ///
+    /// Backend responses never carry user-facing prose: the frontend resolves
+    /// the key with `translateErrorKey`, falling back to `errors.unknown` for
+    /// a key it does not know. Keep the keys in `errors.storage.*`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dupe_studio_lib::app_db::AppDbError;
+    /// use dupe_studio_lib::pagination::PaginationError;
+    ///
+    /// let stale = AppDbError::Pagination(PaginationError::InvalidCursor("stale".into()));
+    /// assert_eq!(stale.i18n_key(), "errors.storage.invalidCursor");
+    ///
+    /// let missing = AppDbError::NotFound("instance-1".into());
+    /// assert_eq!(missing.i18n_key(), "errors.storage.failed");
+    /// ```
+    pub fn i18n_key(&self) -> &'static str {
+        match self {
+            Self::Pagination(PaginationError::InvalidCursor(_)) => "errors.storage.invalidCursor",
+            Self::Pagination(PaginationError::UnknownSortField(_)) => {
+                "errors.storage.unknownSortField"
+            }
+            Self::Io(_) | Self::Migration(_) | Self::Sqlx(_) | Self::NotFound(_) => {
+                "errors.storage.failed"
+            }
+        }
+    }
+}

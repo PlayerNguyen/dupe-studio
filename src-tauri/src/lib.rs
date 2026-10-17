@@ -12,17 +12,20 @@
 //! A single connection is held in [`DbState`] behind an async [`RwLock`]. The
 //! `db_*` commands acquire it in read mode; `db_connect` / `db_disconnect`
 //! acquire it in write mode.
+//!
+//! Storage commands live in [`commands`], one module per domain, and delegate
+//! to the services in [`app_db`].
 
 pub mod app_db;
+pub mod commands;
 pub mod db;
 pub mod pagination;
 
 use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
-use app_db::{AppDb, AppDbError, AuditLogEntry, DatabaseInstance};
+use app_db::{AppDb, AppDbError};
 use db::{ConnectionConfig, Database, DbError, DbValue, QueryResult};
-use pagination::{CursorPagination, OffsetPagination, Page, PaginationError, SortSpec};
 
 #[cfg(all(debug_assertions, not(test)))]
 use specta_typescript::{BigIntExportBehavior, Typescript};
@@ -207,77 +210,6 @@ async fn db_query(
     database.query(&sql, &params).await.map_err(stringify)
 }
 
-/// Returns one offset-paginated page of saved database connections.
-///
-/// # Arguments
-///
-/// * `page` - Offset/limit request from the frontend.
-/// * `sort` - Requested sort; fields are validated against an allowlist.
-/// * `state` - Injected managed [`AppDb`].
-///
-/// # Returns
-///
-/// A [`Page`] of [`DatabaseInstance`] rows, including `total`.
-///
-/// # Errors
-///
-/// Returns an i18n key string (`errors.storage.*`) when the request is invalid
-/// or the query fails.
-#[tauri::command]
-#[specta::specta]
-async fn storage_list_instances(
-    page: OffsetPagination,
-    sort: SortSpec,
-    state: State<'_, AppDb>,
-) -> Result<Page<DatabaseInstance>, String> {
-    state
-        .list_instances(&page, &sort)
-        .await
-        .map_err(storage_error_key)
-}
-
-/// Returns one cursor-paginated page of audit events.
-///
-/// # Arguments
-///
-/// * `page` - Cursor/direction/limit request from the frontend.
-/// * `sort` - Requested sort; fields are validated against an allowlist.
-/// * `state` - Injected managed [`AppDb`].
-///
-/// # Returns
-///
-/// A [`Page`] of [`AuditLogEntry`] rows with `nextCursor` / `prevCursor`.
-///
-/// # Errors
-///
-/// Returns an i18n key string (`errors.storage.*`) when the cursor or sort is
-/// invalid, or the query fails.
-#[tauri::command]
-#[specta::specta]
-async fn storage_query_audit(
-    page: CursorPagination,
-    sort: SortSpec,
-    state: State<'_, AppDb>,
-) -> Result<Page<AuditLogEntry>, String> {
-    state
-        .query_audit(&page, &sort)
-        .await
-        .map_err(storage_error_key)
-}
-
-/// Maps an [`AppDbError`] to the i18n key the frontend translates.
-fn storage_error_key(error: AppDbError) -> String {
-    match error {
-        AppDbError::Pagination(PaginationError::InvalidCursor(_)) => {
-            "errors.storage.invalidCursor".into()
-        }
-        AppDbError::Pagination(PaginationError::UnknownSortField(_)) => {
-            "errors.storage.unknownSortField".into()
-        }
-        _ => "errors.storage.failed".into(),
-    }
-}
-
 /// Renders a [`DbError`] for the frontend.
 fn stringify(error: DbError) -> String {
     error.to_string()
@@ -293,8 +225,8 @@ fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new().commands(collect_commands![
         greet,
         app_version,
-        storage_list_instances,
-        storage_query_audit
+        commands::audit::storage_query_audit,
+        commands::database_instances::storage_list_instances
     ])
 }
 
@@ -357,8 +289,8 @@ pub fn run() {
             db_ping,
             db_execute,
             db_query,
-            storage_list_instances,
-            storage_query_audit
+            commands::audit::storage_query_audit,
+            commands::database_instances::storage_list_instances
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

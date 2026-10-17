@@ -1,61 +1,9 @@
-//! Row and input models for the application store.
+//! Row and input models for the audit log.
 //!
-//! These mirror the tables in `migrations/0001_init.sql`. Timestamps are
-//! ISO-8601 UTC strings produced by SQLite.
+//! These mirror the `audit_log` table in `migrations/0001_init.sql`.
+//! Timestamps are ISO-8601 UTC strings produced by SQLite.
 
 use serde::{Deserialize, Serialize};
-
-/// A saved database connection, without its secret.
-///
-/// The password/DSN secret is never stored here; [`DatabaseInstance::secret_ref`]
-/// points at an OS keychain entry (see the future `keyring` integration).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
-pub struct DatabaseInstance {
-    /// Primary key (UUID v4).
-    pub id: String,
-    /// Display name chosen by the user.
-    pub name: String,
-    /// Backend kind, for example `mysql`.
-    pub kind: String,
-    /// Host name or address.
-    pub host: Option<String>,
-    /// TCP port.
-    pub port: Option<i64>,
-    /// Default database/schema name.
-    pub database_name: Option<String>,
-    /// Login user.
-    pub username: Option<String>,
-    /// Keychain reference for the secret (never the secret itself).
-    pub secret_ref: Option<String>,
-    /// Whether the user pinned the connection.
-    pub is_favorite: bool,
-    /// Creation timestamp (ISO-8601 UTC).
-    pub created_at: String,
-    /// Last update timestamp (ISO-8601 UTC).
-    pub updated_at: String,
-}
-
-/// Input for [`create_instance`](crate::app_db::AppDb::create_instance).
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-pub struct NewDatabaseInstance {
-    /// Display name chosen by the user.
-    pub name: String,
-    /// Backend kind, for example `mysql`.
-    pub kind: String,
-    /// Host name or address.
-    pub host: Option<String>,
-    /// TCP port.
-    pub port: Option<i64>,
-    /// Default database/schema name.
-    pub database_name: Option<String>,
-    /// Login user.
-    pub username: Option<String>,
-    /// Keychain reference for the secret.
-    pub secret_ref: Option<String>,
-    /// Whether the user pinned the connection. Defaults to `false`.
-    #[serde(default)]
-    pub is_favorite: bool,
-}
 
 /// A recorded audit event.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
@@ -80,7 +28,7 @@ pub struct AuditLogEntry {
     pub duration_ms: Option<i64>,
 }
 
-/// Input for [`record_audit`](crate::app_db::AppDb::record_audit).
+/// Input for [`AuditService::record`](crate::app_db::AuditService::record).
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct NewAuditLogEntry {
     /// Event area, for example `connection` or `app`.

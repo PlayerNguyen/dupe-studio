@@ -5,9 +5,18 @@
 //! which talks to the DBMS the user connects to. (Preferences are stored as
 //! JSON files, not here.)
 //!
-//! [`AppDb`] is the single entry point. Open it once at startup (see
-//! `src/lib.rs`), call [`AppDb::migrate`] to bring the schema up to date, then
-//! use the repository methods defined across this module.
+//! [`AppDb`] owns the connection pool and is the single entry point: open it
+//! once at startup (see `src/lib.rs`) and call [`AppDb::migrate`] to bring the
+//! schema up to date. Every table is then read and written through the domain
+//! service that owns it, which is where that domain's models, sort allowlist
+//! and SQL live:
+//!
+//! * [`AppDb::audit`] → [`AuditService`] for `audit_log`.
+//! * [`AppDb::database_instances`] → [`DatabaseInstanceService`] for
+//!   `database_instances`.
+//!
+//! Services only hold a handle to the shared pool, so they are cheap to build
+//! per call — ask [`AppDb`] for one instead of caching it.
 //!
 //! # Migrations
 //!
@@ -20,18 +29,38 @@
 //!
 //! ```no_run
 //! use dupe_studio_lib::app_db::AppDb;
+//! use dupe_studio_lib::pagination::{
+//!     CursorPagination, OffsetPagination, PageDirection, SortSpec,
+//! };
 //!
 //! # async fn run() -> Result<(), dupe_studio_lib::app_db::AppDbError> {
 //! let store = AppDb::open("dupe-studio.sqlite3").await?;
 //! store.migrate().await?;
+//!
+//! let instances = store
+//!     .database_instances()
+//!     .list(&OffsetPagination::default(), &SortSpec::default())
+//!     .await?;
+//!
+//! let events = store
+//!     .audit()
+//!     .query(
+//!         &CursorPagination {
+//!             cursor: None,
+//!             direction: PageDirection::Next,
+//!             limit: 20,
+//!         },
+//!         &SortSpec::default(),
+//!     )
+//!     .await?;
+//! # let _ = (instances, events);
 //! # Ok(())
 //! # }
 //! ```
 
 mod audit;
+mod database_instances;
 mod error;
-mod instances;
-mod models;
 
 use std::path::Path;
 use std::time::Duration;
@@ -40,10 +69,9 @@ use sqlx::SqlitePool;
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
+pub use audit::{AuditLogEntry, AuditService, AuditStatus, NewAuditLogEntry};
+pub use database_instances::{DatabaseInstance, DatabaseInstanceService, NewDatabaseInstance};
 pub use error::AppDbError;
-pub use models::{
-    AuditLogEntry, AuditStatus, DatabaseInstance, NewAuditLogEntry, NewDatabaseInstance,
-};
 
 /// Migrations embedded into the binary at compile time (`migrations/`).
 static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
@@ -51,7 +79,8 @@ static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 /// Handle to the application's SQLite database.
 ///
 /// Cheap to clone: it wraps a [`SqlitePool`]. Store one instance in Tauri's
-/// managed state and share it across commands.
+/// managed state and share it across commands; ask it for the domain service
+/// the command needs ([`AppDb::audit`], [`AppDb::database_instances`]).
 #[derive(Debug, Clone)]
 pub struct AppDb {
     pool: SqlitePool,
@@ -110,9 +139,31 @@ impl AppDb {
 
     /// Returns the underlying connection pool.
     ///
-    /// Intended for advanced callers; prefer the repository methods.
+    /// Intended for advanced callers; prefer the domain services.
     pub fn pool(&self) -> &SqlitePool {
         &self.pool
+    }
+
+    /// Returns the audit-log service bound to this database handle.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use dupe_studio_lib::app_db::AppDb;
+    /// # async fn run() -> Result<(), dupe_studio_lib::app_db::AppDbError> {
+    /// # let store = AppDb::open("dupe-studio.sqlite3").await?;
+    /// let audit = store.audit();
+    /// # let _ = audit;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn audit(&self) -> AuditService {
+        AuditService::new(self.clone())
+    }
+
+    /// Returns the saved-connection service bound to this database handle.
+    pub fn database_instances(&self) -> DatabaseInstanceService {
+        DatabaseInstanceService::new(self.clone())
     }
 
     /// Opens an isolated, migrated in-memory database for tests.
