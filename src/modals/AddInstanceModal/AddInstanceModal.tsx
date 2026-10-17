@@ -27,9 +27,6 @@ import type { CreateInstancePayload } from "./types";
 /** Id shared by the engine form and the footer's submit button. */
 const FORM_ID = "add-instance-form";
 
-/** Fixed height of the two-pane area, so each pane scrolls on its own. */
-const PANE_HEIGHT = 420;
-
 /**
  * Add-database-instance modal.
  *
@@ -89,25 +86,19 @@ export function AddInstanceModal() {
   return (
     <Modal.Root opened={isOpen} onClose={close} size={860} centered>
       <Modal.Overlay backgroundOpacity={0.55} blur={3} />
-      <Modal.Content
-        style={{
-          overflowY: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <Modal.Content className="flex flex-col overflow-y-hidden">
         <Modal.Header>
           <Modal.Title>{t("database.add.title")}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
 
-        <Modal.Body style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-          <Flex gap="md" h={PANE_HEIGHT}>
+        <Modal.Body className="flex-1 min-h-0 overflow-hidden">
+          <Flex gap="md" h={"100vh"}>
             <Box
               w={224}
               className="shrink-0 border-r border-(--mantine-color-default-border) pr-3"
             >
-              <ScrollArea h="100%" type="hover">
+              <ScrollArea h="100vh" type="hover">
                 <DatabaseKindList
                   items={availableDatabases}
                   activeKind={active.kind}
@@ -117,7 +108,7 @@ export function AddInstanceModal() {
               </ScrollArea>
             </Box>
 
-            <ScrollArea flex={1} miw={0} h="100%" type="hover">
+            <ScrollArea flex={1} miw={0} h="100vh" type="hover">
               <Box pr="sm">
                 <Stack gap={2} mb="md">
                   <Text fw={600}>{t(active.labelKey)}</Text>
