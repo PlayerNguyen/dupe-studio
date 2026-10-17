@@ -194,7 +194,13 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
               ) : null}
             </UnstyledButton>
 
-            <Menu position="bottom-end" withinPortal shadow="md">
+            <Menu
+              position="bottom-end"
+              withinPortal
+              shadow="md"
+              width={150}
+              styles={{ dropdown: { padding: 4 } }}
+            >
               <Menu.Target>
                 <ActionIcon
                   variant="subtle"
@@ -209,6 +215,10 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
               <Menu.Dropdown>
                 <Menu.Item
                   leftSection={<Pencil size={14} />}
+                  styles={{
+                    item: { paddingBlock: 4, paddingInline: 8 },
+                    itemSection: { marginInlineEnd: 8 },
+                  }}
                   onClick={() => edit(instance)}
                 >
                   {t("database.instances.edit")}
@@ -216,6 +226,10 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
                 <Menu.Item
                   color="red"
                   leftSection={<Trash2 size={14} />}
+                  styles={{
+                    item: { paddingBlock: 4, paddingInline: 8 },
+                    itemSection: { marginInlineEnd: 8 },
+                  }}
                   onClick={() => remove(instance.id)}
                 >
                   {t("database.instances.delete")}
