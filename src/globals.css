@@ -46,7 +46,7 @@
  */
 @layer components {
   .dupe-press-feedback {
-    transition: transform var(--dupe-smooth-duration, 420ms)
+    transition: transform var(--dupe-press-release-duration, 600ms)
       var(--dupe-bounce-timing, cubic-bezier(0.22, 1.4, 0.36, 1));
   }
 
@@ -54,7 +54,7 @@
     :not([data-loading], :disabled, [data-disabled])
   ) {
     transform: scale(0.965);
-    transition-duration: var(--dupe-press-duration, 110ms);
+    transition-duration: var(--dupe-press-duration, 180ms);
     transition-timing-function: var(
       --dupe-smooth-timing,
       cubic-bezier(0.32, 0.72, 0, 1)

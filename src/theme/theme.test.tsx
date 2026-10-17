@@ -13,6 +13,7 @@ import {
   POPOVER_TRANSITION_DURATION,
   PRESS_FEEDBACK_CLASS,
   PRESS_FEEDBACK_DURATION,
+  PRESS_RELEASE_DURATION,
   SMOOTH_TIMING_FUNCTION,
   SMOOTH_TRANSITION_DURATION,
   smoothTransition,
@@ -110,15 +111,18 @@ describe("theme press feedback", () => {
     );
   });
 
-  it("springs back with an overshooting curve, faster than a modal", () => {
+  it("springs back with an overshooting curve over a long release", () => {
     expect(BOUNCE_TIMING_FUNCTION).not.toBe(SMOOTH_TIMING_FUNCTION);
 
     // cubic-bezier(x1, y1, x2, y2): y1 above 1 is what makes it overshoot.
     const controlPoints = BOUNCE_TIMING_FUNCTION.match(/-?\d*\.?\d+/g) ?? [];
     expect(Number(controlPoints[1])).toBeGreaterThan(1);
 
-    // Pressing must feel immediate, so the squish is much shorter.
-    expect(PRESS_FEEDBACK_DURATION).toBeLessThan(SMOOTH_TRANSITION_DURATION);
+    // Pressing answers immediately, the release carries the bounce.
+    expect(PRESS_FEEDBACK_DURATION).toBeLessThan(PRESS_RELEASE_DURATION);
+    // The spring back is intentionally longer than a modal opening, so the
+    // overshoot is readable.
+    expect(PRESS_RELEASE_DURATION).toBeGreaterThan(SMOOTH_TRANSITION_DURATION);
   });
 });
 
@@ -155,6 +159,9 @@ describe("cssVariablesResolver", () => {
     expect(variables?.["--dupe-bounce-timing"]).toBe(BOUNCE_TIMING_FUNCTION);
     expect(variables?.["--dupe-press-duration"]).toBe(
       `${PRESS_FEEDBACK_DURATION}ms`,
+    );
+    expect(variables?.["--dupe-press-release-duration"]).toBe(
+      `${PRESS_RELEASE_DURATION}ms`,
     );
   });
 });

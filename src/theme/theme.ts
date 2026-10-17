@@ -81,10 +81,19 @@ export const BOUNCE_TIMING_FUNCTION = "cubic-bezier(0.22, 1.4, 0.36, 1)";
 /**
  * Duration, in milliseconds, of the squish while a button is held down.
  *
- * Much shorter than the release: the press must feel immediate, the spring back
- * is what carries the character.
+ * Long enough that the movement is clearly visible, short enough that the button
+ * still answers the press immediately.
  */
-export const PRESS_FEEDBACK_DURATION = 110;
+export const PRESS_FEEDBACK_DURATION = 180;
+
+/**
+ * Duration, in milliseconds, of the spring back once a button is released.
+ *
+ * Deliberately longer than the surfaces' {@link SMOOTH_TRANSITION_DURATION}: the
+ * slow return is what makes the overshoot readable, so the button visibly
+ * settles instead of snapping back.
+ */
+export const PRESS_RELEASE_DURATION = 600;
 
 /**
  * Class that gives a pressable element the squish-and-spring feedback.

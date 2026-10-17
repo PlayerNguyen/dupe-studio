@@ -3,6 +3,7 @@ import type { CSSVariablesResolver } from "@mantine/core";
 import {
   BOUNCE_TIMING_FUNCTION,
   PRESS_FEEDBACK_DURATION,
+  PRESS_RELEASE_DURATION,
   SMOOTH_TIMING_FUNCTION,
   SMOOTH_TRANSITION_DURATION,
 } from "./theme";
@@ -18,6 +19,7 @@ import {
  * - `--dupe-smooth-duration` — duration for modal-sized surfaces.
  * - `--dupe-bounce-timing` — overshooting curve for button release.
  * - `--dupe-press-duration` — squish duration while a button is held down.
+ * - `--dupe-press-release-duration` — spring back duration after release.
  *
  * Pass this to `MantineProvider` (see `src/app/App/App.tsx`).
  *
@@ -29,6 +31,7 @@ export const cssVariablesResolver: CSSVariablesResolver = () => ({
   variables: {
     "--dupe-bounce-timing": BOUNCE_TIMING_FUNCTION,
     "--dupe-press-duration": `${PRESS_FEEDBACK_DURATION}ms`,
+    "--dupe-press-release-duration": `${PRESS_RELEASE_DURATION}ms`,
     "--dupe-smooth-duration": `${SMOOTH_TRANSITION_DURATION}ms`,
     "--dupe-smooth-timing": SMOOTH_TIMING_FUNCTION,
   },
