@@ -1,7 +1,6 @@
 import {
   ActionIcon,
   Group,
-  Menu,
   Stack,
   Text,
   ThemeIcon,
@@ -9,7 +8,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Database, Ellipsis, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { Database, Plus, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useModal } from "../../../../modals";
@@ -20,6 +19,7 @@ import { useInstances } from "../../../../services/storage/useInstances";
 import { useInstanceEditorStore } from "../../../../store/instanceEditorStore";
 import type { DatabaseInstance } from "../../../../types/storage";
 import { CollapsedInstanceList } from "./CollapsedInstanceList";
+import { InstanceActionsMenu } from "./InstanceActionsMenu";
 
 /** Props for {@link DatabaseInstanceList}. */
 export interface DatabaseInstanceListProps {
@@ -146,13 +146,13 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
               onClick={() => connect(instance.id)}
               disabled={connectMutation.isPending}
               aria-label={instance.name}
-              className="flex min-w-0 flex-1 items-center gap-xs text-left"
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
             >
               <ThemeIcon size="sm" radius="md" variant="light" color="brand">
                 <Database size={14} />
               </ThemeIcon>
               <div className="min-w-0 flex-1">
-                <Text size="sm" truncate>
+                <Text size="xs" truncate>
                   {instance.name}
                 </Text>
                 <Text c="dimmed" size="xs" truncate>
@@ -170,48 +170,11 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
               ) : null}
             </UnstyledButton>
 
-            <Menu
-              position="bottom-end"
-              withinPortal
-              shadow="md"
-              width={150}
-              styles={{ dropdown: { padding: 4 } }}
-            >
-              <Menu.Target>
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  size="sm"
-                  aria-label={t("database.instances.actions")}
-                  className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
-                >
-                  <Ellipsis size={16} />
-                </ActionIcon>
-              </Menu.Target>
-              <Menu.Dropdown>
-                <Menu.Item
-                  leftSection={<Pencil size={14} />}
-                  styles={{
-                    item: { paddingBlock: 4, paddingInline: 8 },
-                    itemSection: { marginInlineEnd: 8 },
-                  }}
-                  onClick={() => edit(instance)}
-                >
-                  {t("database.instances.edit")}
-                </Menu.Item>
-                <Menu.Item
-                  color="red"
-                  leftSection={<Trash2 size={14} />}
-                  styles={{
-                    item: { paddingBlock: 4, paddingInline: 8 },
-                    itemSection: { marginInlineEnd: 8 },
-                  }}
-                  onClick={() => remove(instance.id)}
-                >
-                  {t("database.instances.delete")}
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+            <InstanceActionsMenu
+              instance={instance}
+              onEdit={edit}
+              onDelete={remove}
+            />
           </Group>
         ))}
       </Stack>
