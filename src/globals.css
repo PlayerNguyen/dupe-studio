@@ -26,10 +26,54 @@
   body,
   #root {
     height: 100%;
+    /* The shell is a fixed-height layout (`AppLayout` uses h-screen and owns
+       its scroll regions: `<main>` and the sidebar ScrollArea), so the document
+       itself must never scroll. Without this, an overlay that animates past the
+       viewport edge - a Menu sliding up from the footer, for example - extends
+       the scrollable overflow area and adds both scrollbars. */
+    overflow: hidden;
   }
 
   body {
     margin: 0;
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+/*
+ * Press feedback for Mantine buttons (`PRESS_FEEDBACK_CLASS` in
+ * `src/theme/theme.ts`): a quick squish while the button is held down, then a
+ * spring back with a slight overshoot.
+ *
+ * The curves and durations come from the theme as custom properties (see
+ * `src/theme/cssVariablesResolver.ts`), so CSS and TypeScript share one source;
+ * the fallbacks only matter if the resolver is not wired up. `--dupe-press-scale`
+ * is per component: small icon buttons need a stronger squish than a wide
+ * button before the movement is visible. Buttons that Mantine renders as
+ * disabled or loading are excluded, so their own styles win.
+ */
+@layer components {
+  .dupe-press-feedback {
+    transition: transform var(--dupe-press-release-duration, 600ms)
+      var(--dupe-bounce-timing, cubic-bezier(0.22, 1.4, 0.36, 1));
+  }
+
+  .dupe-press-feedback:active:where(
+    :not([data-loading], :disabled, [data-disabled])
+  ) {
+    transform: translateY(1px) scale(var(--dupe-press-scale, 0.96));
+    transition-duration: var(--dupe-press-duration, 180ms);
+    transition-timing-function: var(
+      --dupe-smooth-timing,
+      cubic-bezier(0.32, 0.72, 0, 1)
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dupe-press-feedback,
+    .dupe-press-feedback:active {
+      transition: none;
+      transform: none;
+    }
   }
 }

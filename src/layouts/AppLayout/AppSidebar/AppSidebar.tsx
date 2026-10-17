@@ -30,6 +30,7 @@ import {
 } from "../../../config/configureSidebar";
 import { useModal } from "../../../modals";
 import { useAppStore } from "../../../store/appStore";
+import { POPOVER_TRANSITION_DURATION, smoothTransition } from "../../../theme";
 import { cn } from "../../../utils/cn";
 
 /** Sidebar width in pixels when expanded. */
@@ -54,6 +55,8 @@ function BrandMark() {
  *
  * Exposes the color-scheme toggle and opens the language modal, keeping the
  * two global preferences behind a single control instead of separate buttons.
+ * The dropdown sits in the sidebar footer, so it opens upwards and slides up
+ * into place rather than using the pop animation the theme gives menus.
  */
 function SettingsMenu() {
   const { t, i18n } = useTranslation();
@@ -62,7 +65,16 @@ function SettingsMenu() {
   const about = useModal("about");
 
   return (
-    <Menu position="top" withinPortal shadow="md" width={220}>
+    <Menu
+      position="top"
+      withinPortal
+      shadow="md"
+      width={220}
+      transitionProps={smoothTransition({
+        transition: "slide-up",
+        duration: POPOVER_TRANSITION_DURATION,
+      })}
+    >
       <Menu.Target>
         <ActionIcon
           variant="subtle"
