@@ -33,3 +33,39 @@
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   }
 }
+
+/*
+ * Press feedback for Mantine buttons (`PRESS_FEEDBACK_CLASS` in
+ * `src/theme/theme.ts`): a quick squish while the button is held down, then a
+ * spring back with a slight overshoot.
+ *
+ * The curves and durations come from the theme as custom properties (see
+ * `src/theme/cssVariablesResolver.ts`), so CSS and TypeScript share one source;
+ * the fallbacks only matter if the resolver is not wired up. Buttons that
+ * Mantine renders as disabled or loading are excluded, so their own styles win.
+ */
+@layer components {
+  .dupe-press-feedback {
+    transition: transform var(--dupe-smooth-duration, 420ms)
+      var(--dupe-bounce-timing, cubic-bezier(0.22, 1.4, 0.36, 1));
+  }
+
+  .dupe-press-feedback:active:where(
+    :not([data-loading], :disabled, [data-disabled])
+  ) {
+    transform: scale(0.965);
+    transition-duration: var(--dupe-press-duration, 110ms);
+    transition-timing-function: var(
+      --dupe-smooth-timing,
+      cubic-bezier(0.32, 0.72, 0, 1)
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dupe-press-feedback,
+    .dupe-press-feedback:active {
+      transition: none;
+      transform: none;
+    }
+  }
+}
