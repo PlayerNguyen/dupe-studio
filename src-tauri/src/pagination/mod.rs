@@ -35,7 +35,7 @@ mod page;
 mod sort;
 pub mod sql;
 
-pub use bounds::{DEFAULT_LIMIT, MAX_LIMIT, clamp_limit, default_limit};
+pub use bounds::{PAGINATION_DEFAULT_LIMIT, PAGINATION_MAX_LIMIT, clamp_limit, default_limit};
 pub use cursor::{Cursor, CursorKey, CursorPagination, PageDirection};
 pub use error::PaginationError;
 pub use offset::OffsetPagination;

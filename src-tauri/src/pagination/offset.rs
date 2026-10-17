@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::bounds::{DEFAULT_LIMIT, clamp_limit};
+use super::bounds::{PAGINATION_DEFAULT_LIMIT, clamp_limit};
 
 /// Offset request as sent by the frontend.
 ///
@@ -23,7 +23,7 @@ impl Default for OffsetPagination {
     fn default() -> Self {
         Self {
             offset: 0,
-            limit: DEFAULT_LIMIT,
+            limit: PAGINATION_DEFAULT_LIMIT,
         }
     }
 }
