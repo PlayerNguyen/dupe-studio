@@ -1,4 +1,12 @@
-import { Button, Group, Stack, Text } from "@mantine/core";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  ScrollArea,
+  Stack,
+  Text,
+} from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -18,14 +26,21 @@ import type { CreateInstancePayload } from "./types";
 /** Id shared by the engine form and the footer's submit button. */
 const FORM_ID = "add-instance-form";
 
+/** Fixed height of the two-pane area, so each pane scrolls on its own. */
+const PANE_HEIGHT = 420;
+
 /**
  * Body of the add-database-instance modal.
  *
  * Renders a two-pane layout: the left rail lists every engine from
  * `availableDatabases`, and the right pane renders the selected engine's form.
+ * Each pane has its own `ScrollArea` and the footer sits outside them, so
+ * overflow never scrolls (and therefore never shifts) the whole modal.
+ *
  * The shell is engine-agnostic — it passes registry defaults and the create
  * mutation down through `renderForm`, and receives a ready
- * `NewDatabaseInstance` payload from the registration's `toInput`.
+ * `CreateInstancePayload` from the registration's `toInput` and credential
+ * fields.
  *
  * On success the modal invalidates {@link storageQueryKeys.instances} and
  * closes; because `ModalHost` unmounts modal bodies when they close, the form
@@ -69,33 +84,40 @@ export function AddInstanceModal() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex min-h-[360px] gap-4">
-        <div className="w-56 shrink-0 border-r border-[var(--mantine-color-default-border)] pr-3">
-          <DatabaseKindList
-            items={availableDatabases}
-            activeKind={active.kind}
-            disabled={mutation.isPending}
-            onSelect={selectKind}
-          />
-        </div>
+    <Flex direction="column" gap="md">
+      <Flex gap="md" h={PANE_HEIGHT}>
+        <Box
+          w={224}
+          className="shrink-0 border-r border-[var(--mantine-color-default-border)] pr-3"
+        >
+          <ScrollArea h="100%" type="hover">
+            <DatabaseKindList
+              items={availableDatabases}
+              activeKind={active.kind}
+              disabled={mutation.isPending}
+              onSelect={selectKind}
+            />
+          </ScrollArea>
+        </Box>
 
-        <div className="min-w-0 flex-1">
-          <Stack gap={2} mb="md">
-            <Text fw={600}>{t(active.labelKey)}</Text>
-            <Text size="xs" c="dimmed">
-              {t(active.descriptionKey)}
-            </Text>
-          </Stack>
+        <ScrollArea flex={1} miw={0} h="100%" type="hover">
+          <Box pr="sm">
+            <Stack gap={2} mb="md">
+              <Text fw={600}>{t(active.labelKey)}</Text>
+              <Text size="xs" c="dimmed">
+                {t(active.descriptionKey)}
+              </Text>
+            </Stack>
 
-          {active.renderForm({
-            formId: FORM_ID,
-            isSubmitting: mutation.isPending,
-            error,
-            onSubmit: (payload) => mutation.mutate(payload),
-          })}
-        </div>
-      </div>
+            {active.renderForm({
+              formId: FORM_ID,
+              isSubmitting: mutation.isPending,
+              error,
+              onSubmit: (payload) => mutation.mutate(payload),
+            })}
+          </Box>
+        </ScrollArea>
+      </Flex>
 
       <Group justify="flex-end" gap="sm">
         <Button variant="default" onClick={close} disabled={mutation.isPending}>
@@ -105,6 +127,6 @@ export function AddInstanceModal() {
           {t("database.add.actions.create")}
         </Button>
       </Group>
-    </div>
+    </Flex>
   );
 }

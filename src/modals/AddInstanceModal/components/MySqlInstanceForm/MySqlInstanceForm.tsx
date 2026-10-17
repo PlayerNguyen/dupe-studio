@@ -1,6 +1,7 @@
 import {
   Alert,
   Button,
+  Flex,
   Group,
   NumberInput,
   PasswordInput,
@@ -87,114 +88,115 @@ export function MySqlInstanceForm({
     <form
       id={formId}
       onSubmit={form.onSubmit(onSubmit)}
-      className="flex flex-col gap-4"
       data-testid="mysql-instance-form"
     >
-      {error ? (
-        <Alert
-          color="red"
-          variant="light"
-          title={t("database.add.errors.title")}
-        >
-          {error}
-        </Alert>
-      ) : null}
+      <Flex direction="column" gap="md">
+        {error ? (
+          <Alert
+            color="red"
+            variant="light"
+            title={t("database.add.errors.title")}
+          >
+            {error}
+          </Alert>
+        ) : null}
 
-      <TextInput
-        label={t("database.add.fields.instanceName")}
-        placeholder={t("database.add.fields.instanceNamePlaceholder")}
-        withAsterisk
-        disabled={isSubmitting}
-        {...form.getInputProps("instanceName")}
-      />
-
-      <Group grow align="flex-start">
         <TextInput
-          label={t("database.add.fields.host")}
-          placeholder={t("database.add.fields.hostPlaceholder")}
+          label={t("database.add.fields.instanceName")}
+          placeholder={t("database.add.fields.instanceNamePlaceholder")}
           withAsterisk
           disabled={isSubmitting}
-          {...form.getInputProps("host")}
+          {...form.getInputProps("instanceName")}
         />
-        <NumberInput
-          label={t("database.add.fields.port")}
-          min={1}
-          max={65535}
-          allowDecimal={false}
+
+        <Group grow align="flex-start">
+          <TextInput
+            label={t("database.add.fields.host")}
+            placeholder={t("database.add.fields.hostPlaceholder")}
+            withAsterisk
+            disabled={isSubmitting}
+            {...form.getInputProps("host")}
+          />
+          <NumberInput
+            label={t("database.add.fields.port")}
+            min={1}
+            max={65535}
+            allowDecimal={false}
+            withAsterisk
+            disabled={isSubmitting}
+            {...form.getInputProps("port")}
+          />
+        </Group>
+
+        <TextInput
+          label={t("database.add.fields.databaseName")}
+          placeholder={t("database.add.fields.databaseNamePlaceholder")}
+          disabled={isSubmitting}
+          {...form.getInputProps("databaseName")}
+        />
+
+        <TextInput
+          label={t("database.add.fields.username")}
           withAsterisk
           disabled={isSubmitting}
-          {...form.getInputProps("port")}
+          {...form.getInputProps("username")}
         />
-      </Group>
 
-      <TextInput
-        label={t("database.add.fields.databaseName")}
-        placeholder={t("database.add.fields.databaseNamePlaceholder")}
-        disabled={isSubmitting}
-        {...form.getInputProps("databaseName")}
-      />
-
-      <TextInput
-        label={t("database.add.fields.username")}
-        withAsterisk
-        disabled={isSubmitting}
-        {...form.getInputProps("username")}
-      />
-
-      <PasswordInput
-        label={t("database.add.fields.password")}
-        placeholder={t("database.add.fields.passwordPlaceholder")}
-        autoComplete="new-password"
-        disabled={isSubmitting}
-        {...form.getInputProps("password")}
-      />
-
-      <Group gap="sm">
-        <Button
-          type="button"
-          variant="light"
-          leftSection={<PlugZap size={16} />}
-          loading={testMutation.isPending}
+        <PasswordInput
+          label={t("database.add.fields.password")}
+          placeholder={t("database.add.fields.passwordPlaceholder")}
+          autoComplete="new-password"
           disabled={isSubmitting}
-          onClick={handleTestConnection}
-        >
-          {t("database.add.actions.test")}
-        </Button>
-        {testMutation.isSuccess ? (
-          <Text c="green" size="sm">
-            {t("database.add.test.success")}
-          </Text>
-        ) : null}
-        {testMutation.isError ? (
-          <Text c="red" size="sm">
-            {testMutation.error instanceof Error
-              ? testMutation.error.message
-              : t("database.add.test.failed")}
-          </Text>
-        ) : null}
-      </Group>
-
-      <Stack gap={2}>
-        <Switch
-          label={t("database.add.fields.remember")}
-          disabled={isSubmitting}
-          {...form.getInputProps("remember", { type: "checkbox" })}
+          {...form.getInputProps("password")}
         />
-        <span className="text-xs text-[var(--mantine-color-dimmed)]">
-          {t("database.add.fields.rememberDescription")}
-        </span>
-      </Stack>
 
-      <Stack gap={2}>
-        <Switch
-          label={t("database.add.fields.favorite")}
-          disabled={isSubmitting}
-          {...form.getInputProps("isFavorite", { type: "checkbox" })}
-        />
-        <span className="text-xs text-[var(--mantine-color-dimmed)]">
-          {t("database.add.fields.favoriteDescription")}
-        </span>
-      </Stack>
+        <Group gap="sm">
+          <Button
+            type="button"
+            variant="light"
+            leftSection={<PlugZap />}
+            loading={testMutation.isPending}
+            disabled={isSubmitting}
+            onClick={handleTestConnection}
+          >
+            {t("database.add.actions.test")}
+          </Button>
+          {testMutation.isSuccess ? (
+            <Text c="green" size="sm">
+              {t("database.add.test.success")}
+            </Text>
+          ) : null}
+          {testMutation.isError ? (
+            <Text c="red" size="sm">
+              {testMutation.error instanceof Error
+                ? testMutation.error.message
+                : t("database.add.test.failed")}
+            </Text>
+          ) : null}
+        </Group>
+
+        <Stack gap={2}>
+          <Switch
+            label={t("database.add.fields.remember")}
+            disabled={isSubmitting}
+            {...form.getInputProps("remember", { type: "checkbox" })}
+          />
+          <span className="text-xs text-[var(--mantine-color-dimmed)]">
+            {t("database.add.fields.rememberDescription")}
+          </span>
+        </Stack>
+
+        <Stack gap={2}>
+          <Switch
+            label={t("database.add.fields.favorite")}
+            disabled={isSubmitting}
+            {...form.getInputProps("isFavorite", { type: "checkbox" })}
+          />
+          <span className="text-xs text-[var(--mantine-color-dimmed)]">
+            {t("database.add.fields.favoriteDescription")}
+          </span>
+        </Stack>
+      </Flex>
     </form>
   );
 }

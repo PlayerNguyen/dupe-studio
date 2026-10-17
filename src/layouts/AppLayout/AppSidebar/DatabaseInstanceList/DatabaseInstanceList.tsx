@@ -1,14 +1,4 @@
-import {
-  ActionIcon,
-  Group,
-  Stack,
-  Text,
-  ThemeIcon,
-  Tooltip,
-  UnstyledButton,
-} from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Database, Plus, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useModal } from "../../../../modals";
@@ -16,10 +6,9 @@ import { connectInstance } from "../../../../services/database/databaseService";
 import { storageQueryKeys } from "../../../../services/storage/queryKeys";
 import { deleteInstance } from "../../../../services/storage/storageService";
 import { useInstances } from "../../../../services/storage/useInstances";
-import { useInstanceEditorStore } from "../../../../store/instanceEditorStore";
 import type { DatabaseInstance } from "../../../../types/storage";
 import { CollapsedInstanceList } from "./CollapsedInstanceList";
-import { InstanceActionsMenu } from "./InstanceActionsMenu";
+import { ExpandedInstanceList } from "./ExpandedInstanceList";
 
 /** Props for {@link DatabaseInstanceList}. */
 export interface DatabaseInstanceListProps {
@@ -30,29 +19,18 @@ export interface DatabaseInstanceListProps {
 /**
  * Sidebar section listing every saved database instance.
  *
- * Reads the shared {@link useInstances} query, so it stays in sync with the
- * add-instance modal: the modal invalidates the instances key after a
- * successful insert and this list refetches. The section header carries the
- * action that opens the add-instance modal, which keeps creation reachable from
- * any page.
- *
- * Selecting an instance calls `connectInstance`, which resolves the password
- * from the OS credential store in the backend; a session-only instance surfaces
- * `errors.storage.secretMissing` until a password prompt exists. Each row also
- * exposes a hover-revealed menu: "Edit" opens the `editInstance` modal with the
- * row, and "Delete" removes the instance and its stored credential.
- *
- * In the collapsed rail the same data is rendered as icon buttons with
- * tooltipped names; the row actions are only offered in the expanded form.
+ * Owns the data and mutations (instances query, connect, delete) and delegates
+ * rendering to {@link CollapsedInstanceList} or {@link ExpandedInstanceList}.
+ * Editing goes through the `editInstance` modal with the row as a typed prop, so
+ * no extra store is needed.
  *
  * @param props - Whether the sidebar is collapsed.
- * @returns The saved-instance list, its states, the add action and row actions.
+ * @returns The saved-instance section for the current sidebar form.
  */
 export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
   const { t } = useTranslation();
   const addInstance = useModal("addInstance");
   const editInstanceModal = useModal("editInstance");
-  const openEditor = useInstanceEditorStore((state) => state.open);
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useInstances();
   const instances = data?.items ?? [];
@@ -73,8 +51,7 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
   const connect = (instanceId: string) => connectMutation.mutate(instanceId);
 
   const edit = (instance: DatabaseInstance) => {
-    openEditor(instance);
-    editInstanceModal.open();
+    editInstanceModal.open({ instance });
   };
 
   const remove = (instanceId: string) => deleteMutation.mutate(instanceId);
@@ -90,109 +67,29 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
     );
   }
 
+  const connectError = connectMutation.isError
+    ? connectMutation.error instanceof Error
+      ? connectMutation.error.message
+      : t("database.instances.connectFailed")
+    : null;
+  const deleteError = deleteMutation.isError
+    ? deleteMutation.error instanceof Error
+      ? deleteMutation.error.message
+      : t("database.instances.deleteFailed")
+    : null;
+
   return (
-    <Stack gap={4} data-testid="database-instance-list">
-      <Group justify="space-between" px="xs" wrap="nowrap">
-        <Text
-          c="dimmed"
-          fw={600}
-          size="xs"
-          tt="uppercase"
-          className="tracking-wide"
-        >
-          {t("database.instances.title")}
-        </Text>
-        <Tooltip label={t("database.instances.add")} withArrow>
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            size="sm"
-            aria-label={t("database.instances.add")}
-            onClick={addInstance.open}
-          >
-            <Plus size={16} />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
-
-      {isLoading ? (
-        <Text c="dimmed" size="xs" px="xs">
-          {t("database.instances.loading")}
-        </Text>
-      ) : null}
-      {isError ? (
-        <Text c="red" size="xs" px="xs">
-          {t("database.instances.error")}
-        </Text>
-      ) : null}
-      {!isLoading && !isError && instances.length === 0 ? (
-        <Text c="dimmed" size="xs" px="xs">
-          {t("database.instances.empty")}
-        </Text>
-      ) : null}
-
-      <Stack gap={2}>
-        {instances.map((instance) => (
-          <Group
-            key={instance.id}
-            gap={0}
-            wrap="nowrap"
-            px="xs"
-            py={4}
-            className="group rounded-lg transition-colors hover:bg-[var(--mantine-color-default-hover)]"
-            data-testid="database-instance"
-          >
-            <UnstyledButton
-              onClick={() => connect(instance.id)}
-              disabled={connectMutation.isPending}
-              aria-label={instance.name}
-              className="flex min-w-0 flex-1 items-center gap-2 text-left"
-            >
-              <ThemeIcon size="sm" radius="md" variant="light" color="brand">
-                <Database size={14} />
-              </ThemeIcon>
-              <div className="min-w-0 flex-1">
-                <Text size="xs" truncate>
-                  {instance.name}
-                </Text>
-                <Text c="dimmed" size="xs" truncate>
-                  {t(`database.kinds.${instance.kind}.label`, {
-                    defaultValue: instance.kind,
-                  })}
-                </Text>
-              </div>
-              {instance.is_favorite ? (
-                <Star
-                  size={14}
-                  className="shrink-0 text-brand"
-                  fill="currentColor"
-                />
-              ) : null}
-            </UnstyledButton>
-
-            <InstanceActionsMenu
-              instance={instance}
-              onEdit={edit}
-              onDelete={remove}
-            />
-          </Group>
-        ))}
-      </Stack>
-
-      {connectMutation.isError ? (
-        <Text c="red" size="xs" px="xs">
-          {connectMutation.error instanceof Error
-            ? connectMutation.error.message
-            : t("database.instances.connectFailed")}
-        </Text>
-      ) : null}
-      {deleteMutation.isError ? (
-        <Text c="red" size="xs" px="xs">
-          {deleteMutation.error instanceof Error
-            ? deleteMutation.error.message
-            : t("database.instances.deleteFailed")}
-        </Text>
-      ) : null}
-    </Stack>
+    <ExpandedInstanceList
+      instances={instances}
+      isLoading={isLoading}
+      isError={isError}
+      connecting={connectMutation.isPending}
+      onAdd={addInstance.open}
+      onConnect={connect}
+      onEdit={edit}
+      onDelete={remove}
+      connectError={connectError}
+      deleteError={deleteError}
+    />
   );
 }

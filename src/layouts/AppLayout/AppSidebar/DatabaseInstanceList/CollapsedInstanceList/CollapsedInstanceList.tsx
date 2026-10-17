@@ -45,7 +45,7 @@ export function CollapsedInstanceList({
           aria-label={t("database.instances.add")}
           onClick={onAdd}
         >
-          <Plus size={18} />
+          <Plus />
         </ActionIcon>
       </Tooltip>
       {instances.map((instance) => (
@@ -62,7 +62,7 @@ export function CollapsedInstanceList({
             onClick={() => onConnect(instance.id)}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--mantine-color-dimmed)] transition-colors hover:bg-[var(--mantine-color-default-hover)] hover:text-[var(--mantine-color-text)]"
           >
-            <Database size={20} />
+            <Database />
           </UnstyledButton>
         </Tooltip>
       ))}

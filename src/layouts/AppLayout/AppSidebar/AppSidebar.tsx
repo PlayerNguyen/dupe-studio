@@ -46,7 +46,7 @@ function BrandMark() {
 
   return (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
-      <Icon size={20} />
+      <Icon />
     </span>
   );
 }
@@ -82,14 +82,12 @@ function SettingsMenu() {
           color="gray"
           aria-label={t("common.settings.open")}
         >
-          <Cog size={18} />
+          <Cog />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
-          leftSection={
-            colorScheme === "dark" ? <Sun size={16} /> : <Moon size={16} />
-          }
+          leftSection={colorScheme === "dark" ? <Sun /> : <Moon />}
           rightSection={
             <Text size="xs" c="dimmed">
               {t(`common.colorScheme.${colorScheme}`)}
@@ -100,18 +98,18 @@ function SettingsMenu() {
           {t("common.colorScheme.label")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<Languages size={16} />}
+          leftSection={<Languages />}
           rightSection={
             <Text size="xs" c="dimmed">
               {t(`common.language.options.${i18n.resolvedLanguage ?? "en"}`)}
             </Text>
           }
-          onClick={language.open}
+          onClick={() => language.open()}
         >
           {t("common.language.label")}
         </Menu.Item>
         <Menu.Divider />
-        <Menu.Item leftSection={<Info size={16} />} onClick={about.open}>
+        <Menu.Item leftSection={<Info />} onClick={() => about.open()}>
           {t("common.about.label")}
         </Menu.Item>
       </Menu.Dropdown>
@@ -157,7 +155,7 @@ function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
             "data-[active=true]:bg-[var(--mantine-color-brand-light)] data-[active=true]:text-[var(--mantine-color-brand-light-color)]",
           )}
         >
-          <Icon size={20} />
+          <Icon />
         </UnstyledButton>
       </Tooltip>
     );
@@ -167,7 +165,7 @@ function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
     <NavLink
       active={active}
       label={label}
-      leftSection={<Icon size={18} />}
+      leftSection={<Icon />}
       onClick={handleSelect}
       color="brand"
       variant="light"
@@ -222,7 +220,7 @@ export function AppSidebar() {
               aria-label={t("common.sidebar.toggle")}
               onClick={toggleSidebar}
             >
-              <PanelLeftOpen size={18} />
+              <PanelLeftOpen />
             </ActionIcon>
           </Tooltip>
         </div>
@@ -248,7 +246,7 @@ export function AppSidebar() {
               aria-label={t("common.sidebar.toggle")}
               onClick={toggleSidebar}
             >
-              <PanelLeftClose size={18} />
+              <PanelLeftClose />
             </ActionIcon>
           </Tooltip>
         </div>

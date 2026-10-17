@@ -48,9 +48,7 @@ export function HomePage() {
           <Button
             variant="light"
             aria-label="Toggle color scheme"
-            leftSection={
-              colorScheme === "dark" ? <Sun size={16} /> : <Moon size={16} />
-            }
+            leftSection={colorScheme === "dark" ? <Sun /> : <Moon />}
             onClick={toggleColorScheme}
           >
             {colorScheme === "dark" ? "Light" : "Dark"}

@@ -88,10 +88,20 @@ Rules:
   primary sidebar beside the routed content. Sidebar destinations are declared
   once in `config/configureSidebar.tsx` — add, remove or regroup entries there
   instead of editing the sidebar component.
-- Global modals are registered in `modals/registry.ts` and opened through the
-  `useModal` hook backed by the Zustand `store/modalStore.ts`; `<ModalHost />`
-  renders the open ones into a portal. Do not render one-off `Modal`s inline in
-  feature components.
+- Global modals are registered in `modals/registry.ts` with their props in
+  `ModalPropsMap`, and opened through `useModal`, which type-checks the payload
+  (`useModal("editInstance").open({ instance })`). `<ModalHost />` forwards the
+  props and renders the open ones into a portal. Do not render one-off `Modal`s
+  inline in feature components or add a store just to pass data into one.
+- Use Mantine layout primitives (`Flex`, `Stack`, `Group`, `Box`) instead of
+  Tailwind `flex` utility `div`s. Give each scrollable pane its own `ScrollArea`
+  so a scrollbar never shifts the whole surface, and keep footers outside those
+  panes.
+- **Icons use the global Lucide defaults.** Render `lucide-react` icons without a
+  `size` prop; `theme/IconProvider/IconProvider.tsx` sets the global size (12)
+  and the theme-aware class, and it sits inside Mantine's provider so it can read
+  the active color scheme. A non-default size is a deliberate decision the user
+  must request.
 - Components never call `invoke` directly; add a documented wrapper under
   `services/<domain>/`. HTTP endpoints, when they exist, belong under `rest/`.
 - User-facing text is never hard-coded: add a key to every

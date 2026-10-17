@@ -49,12 +49,12 @@ export function InstanceActionsMenu({
           aria-label={t("database.instances.actions")}
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100"
         >
-          <Ellipsis size={16} />
+          <Ellipsis />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
-          leftSection={<Pencil size={14} />}
+          leftSection={<Pencil />}
           styles={{
             item: { paddingBlock: 4, paddingInline: 8 },
             itemSection: { marginInlineEnd: 8 },
@@ -65,7 +65,7 @@ export function InstanceActionsMenu({
         </Menu.Item>
         <Menu.Item
           color="red"
-          leftSection={<Trash2 size={14} />}
+          leftSection={<Trash2 />}
           styles={{
             item: { paddingBlock: 4, paddingInline: 8 },
             itemSection: { marginInlineEnd: 8 },

@@ -31,7 +31,7 @@ export function ApplicationErrorFallback() {
       <Alert
         color="red"
         variant="light"
-        icon={<TriangleAlert size={18} />}
+        icon={<TriangleAlert />}
         title={t("errors.title")}
         maw={560}
       >

@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryClient } from "../../config/configureQueryClient";
 import { i18n } from "../../i18n";
-import { useInstanceEditorStore } from "../../store/instanceEditorStore";
 import { useModalStore } from "../../store/modalStore";
 import type { DatabaseInstance } from "../../types/storage";
 import { EditInstanceModal } from ".";
@@ -43,7 +42,7 @@ function renderModal() {
   return render(
     <MantineProvider>
       <QueryClientProvider client={createQueryClient()}>
-        <EditInstanceModal />
+        <EditInstanceModal instance={savedInstance} />
       </QueryClientProvider>
     </MantineProvider>,
   );
@@ -52,9 +51,9 @@ function renderModal() {
 describe("EditInstanceModal", () => {
   beforeEach(async () => {
     useModalStore.getState().reset();
-    useInstanceEditorStore.getState().reset();
-    useInstanceEditorStore.getState().open(savedInstance);
-    useModalStore.getState().openModal("editInstance");
+    useModalStore
+      .getState()
+      .openModal("editInstance", { instance: savedInstance });
     mocks.updateInstance.mockReset();
     await i18n.changeLanguage("en");
   });
@@ -81,7 +80,7 @@ describe("EditInstanceModal", () => {
     render(
       <MantineProvider>
         <QueryClientProvider client={queryClient}>
-          <EditInstanceModal />
+          <EditInstanceModal instance={savedInstance} />
         </QueryClientProvider>
       </MantineProvider>,
     );

@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryClient } from "../../../config/configureQueryClient";
 import { useAppStore } from "../../../store/appStore";
-import { useInstanceEditorStore } from "../../../store/instanceEditorStore";
 import { useModalStore } from "../../../store/modalStore";
 import { AppSidebar } from ".";
 
@@ -73,7 +72,6 @@ describe("AppSidebar", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
     useModalStore.getState().reset();
-    useInstanceEditorStore.getState().reset();
     connectMocks.connectInstance.mockReset();
     storageMocks.deleteInstance.mockReset();
   });
@@ -148,8 +146,11 @@ describe("AppSidebar", () => {
     await user.click(screen.getByLabelText("Instance actions"));
     await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
 
-    expect(useInstanceEditorStore.getState().instance?.id).toBe("instance-1");
+    const props = useModalStore.getState().modalProps.editInstance as {
+      instance: { id: string };
+    };
     expect(useModalStore.getState().openModals.editInstance).toBe(true);
+    expect(props.instance.id).toBe("instance-1");
   });
 
   it("opens the add-instance modal from the instances action", async () => {

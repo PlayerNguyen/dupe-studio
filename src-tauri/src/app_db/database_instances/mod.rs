@@ -18,6 +18,20 @@ use crate::pagination::{OffsetPageQuery, Page, SortSpec};
 
 pub use models::{DatabaseInstance, NewDatabaseInstance, UpdateDatabaseInstance};
 
+/// Keychain writes planned for an instance update.
+///
+/// Built by [`DatabaseInstanceService::plan_secret_update`] so the update
+/// method can run the SQL once and still compensate correctly on either
+/// outcome.
+struct SecretUpdatePlan {
+    /// Reference to store on the row after a successful update.
+    secret_ref: Option<String>,
+    /// Account written during this call; deleted if the row update fails.
+    newly_stored: Option<String>,
+    /// Account to delete after a successful update.
+    delete_after_update: Option<String>,
+}
+
 /// Read/write service for saved database connections.
 ///
 /// Cheap to clone: it only holds a handle to the shared connection pool, so
@@ -174,32 +188,13 @@ impl DatabaseInstanceService {
         Self::validate(&changes.name, &changes.kind, changes.port)?;
 
         let password = password.filter(|value| !value.is_empty());
-        let mut newly_stored = None;
-
-        let secret_ref = if remember {
-            match (existing.secret_ref.clone(), password) {
-                (Some(account), Some(password)) => {
-                    store.set(&account, password)?;
-                    Some(account)
-                }
-                (Some(account), None) => Some(account),
-                (None, Some(password)) => {
-                    let account = account_for(id);
-                    store.set(&account, password)?;
-                    newly_stored = Some(account.clone());
-                    Some(account)
-                }
-                (None, None) => None,
-            }
-        } else {
-            None
-        };
-
-        let previous_secret = if remember {
-            None
-        } else {
-            existing.secret_ref.clone()
-        };
+        let plan = Self::plan_secret_update(
+            store,
+            id,
+            existing.secret_ref.as_deref(),
+            password,
+            remember,
+        )?;
 
         let result = sqlx::query_as::<_, DatabaseInstance>(
             "UPDATE database_instances \
@@ -215,7 +210,7 @@ impl DatabaseInstanceService {
         .bind(changes.port)
         .bind(changes.database_name)
         .bind(changes.username)
-        .bind(secret_ref)
+        .bind(plan.secret_ref)
         .bind(changes.is_favorite)
         .bind(id)
         .fetch_one(self.db.pool())
@@ -223,13 +218,13 @@ impl DatabaseInstanceService {
 
         match result {
             Ok(row) => {
-                if let Some(account) = previous_secret {
+                if let Some(account) = plan.delete_after_update {
                     let _ = store.delete(&account);
                 }
                 Ok(row)
             }
             Err(error) => {
-                if let Some(account) = newly_stored {
+                if let Some(account) = plan.newly_stored {
                     let _ = store.delete(&account);
                 }
                 Err(error.into())
@@ -316,6 +311,61 @@ impl DatabaseInstanceService {
         .await?;
 
         Ok(row)
+    }
+
+    /// Plans the keychain writes for [`Self::update_with_secret`].
+    ///
+    /// Returns the reference to persist on the row plus the compensating
+    /// deletes: `newly_stored` is removed if the row update fails, and
+    /// `delete_after_update` is removed once it succeeds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppDbError::Secret`] when a keychain write fails.
+    fn plan_secret_update(
+        store: &dyn SecretStore,
+        id: &str,
+        existing: Option<&str>,
+        password: Option<&str>,
+        remember: bool,
+    ) -> Result<SecretUpdatePlan, AppDbError> {
+        if !remember {
+            return Ok(SecretUpdatePlan {
+                secret_ref: None,
+                newly_stored: None,
+                delete_after_update: existing.map(str::to_string),
+            });
+        }
+
+        match (existing, password) {
+            (Some(account), Some(password)) => {
+                store.set(account, password)?;
+                Ok(SecretUpdatePlan {
+                    secret_ref: Some(account.to_string()),
+                    newly_stored: None,
+                    delete_after_update: None,
+                })
+            }
+            (Some(account), None) => Ok(SecretUpdatePlan {
+                secret_ref: Some(account.to_string()),
+                newly_stored: None,
+                delete_after_update: None,
+            }),
+            (None, Some(password)) => {
+                let account = account_for(id);
+                store.set(&account, password)?;
+                Ok(SecretUpdatePlan {
+                    secret_ref: Some(account.clone()),
+                    newly_stored: Some(account),
+                    delete_after_update: None,
+                })
+            }
+            (None, None) => Ok(SecretUpdatePlan {
+                secret_ref: None,
+                newly_stored: None,
+                delete_after_update: None,
+            }),
+        }
     }
 
     /// Validates normalized metadata shared by create and update.

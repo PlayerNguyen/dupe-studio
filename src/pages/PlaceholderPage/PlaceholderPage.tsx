@@ -34,7 +34,7 @@ export function PlaceholderPage({
   return (
     <Stack align="center" justify="center" h="100%" p="xl" gap="md">
       <ThemeIcon size={64} radius="xl" variant="light" color="brand">
-        <Icon size={30} />
+        <Icon />
       </ThemeIcon>
       <Title order={2}>{t(titleKey)}</Title>
       <Text c="dimmed" maw={440} ta="center">

@@ -44,7 +44,7 @@ export function LanguageModal() {
             <Text fw={500}>{t(`common.language.options.${language}`)}</Text>
             {active ? (
               <ThemeIcon size="sm" radius="xl" variant="light" color="brand">
-                <Check size={14} />
+                <Check />
               </ThemeIcon>
             ) : null}
           </UnstyledButton>

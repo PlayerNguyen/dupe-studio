@@ -1,4 +1,4 @@
-import { NavLink, ScrollArea, Stack, Text } from "@mantine/core";
+import { NavLink, Stack, Text } from "@mantine/core";
 import { useTranslation } from "react-i18next";
 import type { DatabaseKind } from "../../../../types/database";
 import type { AvailableDatabase } from "../../types";
@@ -47,24 +47,22 @@ export function DatabaseKindList({
         {t("database.add.availableDatabases")}
       </Text>
 
-      <ScrollArea type="hover" className="min-h-0">
-        <Stack gap={4}>
-          {items.map(({ kind, labelKey, descriptionKey, icon: Icon }) => (
-            <NavLink
-              key={kind}
-              active={kind === activeKind}
-              label={t(labelKey)}
-              description={t(descriptionKey)}
-              leftSection={<Icon size={18} />}
-              onClick={() => onSelect(kind)}
-              disabled={disabled}
-              color="brand"
-              variant="light"
-              className="rounded-xl"
-            />
-          ))}
-        </Stack>
-      </ScrollArea>
+      <Stack gap={4}>
+        {items.map(({ kind, labelKey, descriptionKey, icon: Icon }) => (
+          <NavLink
+            key={kind}
+            active={kind === activeKind}
+            label={t(labelKey)}
+            description={t(descriptionKey)}
+            leftSection={<Icon />}
+            onClick={() => onSelect(kind)}
+            disabled={disabled}
+            color="brand"
+            variant="light"
+            className="rounded-xl"
+          />
+        ))}
+      </Stack>
     </Stack>
   );
 }

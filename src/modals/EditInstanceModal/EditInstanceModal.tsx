@@ -1,11 +1,10 @@
-import { Alert, Button, Group, Stack, Text } from "@mantine/core";
+import { Alert, Button, Flex, Group, Stack, Text } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 import { storageQueryKeys } from "../../services/storage/queryKeys";
 import { updateInstance } from "../../services/storage/storageService";
-import { useInstanceEditorStore } from "../../store/instanceEditorStore";
+import type { DatabaseInstance } from "../../types/storage";
 import {
   availableDatabases,
   type CreateInstancePayload,
@@ -15,39 +14,39 @@ import { useModal } from "../useModal";
 /** Id shared by the engine form and the footer save button. */
 const FORM_ID = "edit-instance-form";
 
+/** Props the modal is opened with (see `ModalPropsMap`). */
+export interface EditInstanceModalProps {
+  /** Saved row to edit; supplied by the sidebar's edit action. */
+  instance: DatabaseInstance;
+}
+
 /**
  * Body of the edit-database-instance modal.
  *
- * Reads the row from {@link useInstanceEditorStore}, looks up its engine in the
- * `availableDatabases` registry and renders that engine's form prefilled from
- * the row (`toInitialValues`). Submitting calls `updateInstance`, invalidates
- * the instances query and closes the modal; the edited row is cleared when the
- * body unmounts, so every close path resets the flow.
+ * Receives the row through the modal props (`useModal("editInstance").open`)
+ * rather than a dedicated store, looks up its engine in the `availableDatabases`
+ * registry and renders that engine's form prefilled from the row
+ * (`toInitialValues`). Submitting calls `updateInstance`, invalidates the
+ * instances query and closes the modal.
  *
  * Registered as `editInstance` in `src/modals/registry.ts`.
  *
- * @returns The prefilled engine form, or `null` while no row is selected.
+ * @param props - The saved instance being edited.
+ * @returns The prefilled engine form.
  */
-export function EditInstanceModal() {
+export function EditInstanceModal({ instance }: EditInstanceModalProps) {
   const { t } = useTranslation();
   const { close } = useModal("editInstance");
-  const instance = useInstanceEditorStore((state) => state.instance);
-  const clearInstance = useInstanceEditorStore((state) => state.close);
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (payload: CreateInstancePayload) => {
-      if (!instance) {
-        return Promise.reject(new Error(t("errors.unknown")));
-      }
-
-      return updateInstance(
+    mutationFn: (payload: CreateInstancePayload) =>
+      updateInstance(
         instance.id,
         payload.input,
         payload.password,
         payload.remember,
-      );
-    },
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: storageQueryKeys.instances,
@@ -56,18 +55,11 @@ export function EditInstanceModal() {
     },
   });
 
-  // Clear the edited row whenever the modal body unmounts.
-  useEffect(() => () => clearInstance(), [clearInstance]);
-
   const error = mutation.isError
     ? mutation.error instanceof Error
       ? mutation.error.message
       : t("database.add.errors.createFailed")
     : null;
-
-  if (!instance) {
-    return null;
-  }
 
   const active = availableDatabases.find(
     (database) => database.kind === instance.kind,
@@ -78,7 +70,7 @@ export function EditInstanceModal() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <Flex direction="column" gap="md">
       <Stack gap={2}>
         <Text fw={600}>{t(active.labelKey)}</Text>
         <Text size="xs" c="dimmed">
@@ -102,6 +94,6 @@ export function EditInstanceModal() {
           {t("database.edit.actions.save")}
         </Button>
       </Group>
-    </div>
+    </Flex>
   );
 }
