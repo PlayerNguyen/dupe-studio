@@ -52,8 +52,35 @@ pub struct NewDatabaseInstance {
     /// Login user.
     pub username: Option<String>,
     /// Keychain reference for the secret.
+    ///
+    /// Ignored by [`DatabaseInstanceService::create_with_secret`](crate::app_db::DatabaseInstanceService::create_with_secret):
+    /// the service generates the account and owns this field.
     pub secret_ref: Option<String>,
     /// Whether the user pinned the connection. Defaults to `false`.
+    #[serde(default)]
+    pub is_favorite: bool,
+}
+
+/// Input for updating a saved connection's metadata.
+///
+/// The keychain reference is deliberately absent: the backend keeps ownership
+/// of `secret_ref` and only changes it when the password or the "remember"
+/// choice changes.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct UpdateDatabaseInstance {
+    /// Display name chosen by the user.
+    pub name: String,
+    /// Backend kind, for example `mysql`.
+    pub kind: String,
+    /// Host name or address.
+    pub host: Option<String>,
+    /// TCP port.
+    pub port: Option<i64>,
+    /// Default database/schema name.
+    pub database_name: Option<String>,
+    /// Login user.
+    pub username: Option<String>,
+    /// Whether the user pinned the connection.
     #[serde(default)]
     pub is_favorite: bool,
 }

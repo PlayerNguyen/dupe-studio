@@ -1,10 +1,11 @@
 import { MantineProvider } from "@mantine/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FRONTEND_VERSION } from "../../config/appInfo";
 import { createQueryClient } from "../../config/configureQueryClient";
+import { useModalStore } from "../../store/modalStore";
 import { AboutModal } from ".";
 
 vi.mock("../../services/system/systemService", () => ({
@@ -27,6 +28,11 @@ function renderAboutModal() {
 }
 
 describe("AboutModal", () => {
+  beforeEach(() => {
+    useModalStore.getState().reset();
+    useModalStore.getState().openModal("about");
+  });
+
   it("shows the frontend version injected at build time", () => {
     renderAboutModal();
 

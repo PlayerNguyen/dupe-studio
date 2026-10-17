@@ -1,11 +1,47 @@
 import { MantineProvider } from "@mantine/core";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createQueryClient } from "../../../config/configureQueryClient";
 import { useAppStore } from "../../../store/appStore";
+import { useModalStore } from "../../../store/modalStore";
 import { AppSidebar } from ".";
+
+const connectMocks = vi.hoisted(() => ({
+  connectInstance: vi.fn(),
+}));
+
+const storageMocks = vi.hoisted(() => ({
+  deleteInstance: vi.fn(),
+}));
+
+vi.mock("../../../services/database/databaseService", () => ({
+  connectInstance: connectMocks.connectInstance,
+}));
+
+vi.mock("../../../services/storage/storageService", () => ({
+  deleteInstance: storageMocks.deleteInstance,
+}));
+
+vi.mock("../../../services/storage/useInstances", () => ({
+  useInstances: () => ({
+    data: {
+      items: [
+        {
+          id: "instance-1",
+          name: "Local MySQL",
+          kind: "mysql",
+          is_favorite: true,
+        },
+      ],
+    },
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 /** Renders the current pathname so navigation can be asserted. */
 function LocationProbe() {
@@ -22,10 +58,12 @@ function LocationProbe() {
 function renderSidebar(initialPath = "/") {
   return render(
     <MantineProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <AppSidebar />
-        <LocationProbe />
-      </MemoryRouter>
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <AppSidebar />
+          <LocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>
     </MantineProvider>,
   );
 }
@@ -33,6 +71,9 @@ function renderSidebar(initialPath = "/") {
 describe("AppSidebar", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
+    useModalStore.getState().reset();
+    connectMocks.connectInstance.mockReset();
+    storageMocks.deleteInstance.mockReset();
   });
 
   it("renders the brand and every navigation entry", () => {
@@ -68,6 +109,57 @@ describe("AppSidebar", () => {
     await user.click(screen.getByText("Settings"));
 
     expect(screen.getByTestId("pathname")).toHaveTextContent("/settings");
+  });
+
+  it("lists the saved database instances", () => {
+    renderSidebar();
+
+    expect(screen.getByText("Databases")).toBeInTheDocument();
+    expect(screen.getByText("Local MySQL")).toBeInTheDocument();
+  });
+
+  it("connects to a saved instance when selected", async () => {
+    const user = userEvent.setup();
+    connectMocks.connectInstance.mockResolvedValue(undefined);
+    renderSidebar();
+
+    await user.click(screen.getByRole("button", { name: "Local MySQL" }));
+
+    expect(connectMocks.connectInstance).toHaveBeenCalledWith("instance-1");
+  });
+
+  it("deletes an instance from the row menu", async () => {
+    const user = userEvent.setup();
+    storageMocks.deleteInstance.mockResolvedValue(true);
+    renderSidebar();
+
+    await user.click(screen.getByLabelText("Instance actions"));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+
+    expect(storageMocks.deleteInstance).toHaveBeenCalledWith("instance-1");
+  });
+
+  it("opens the edit modal with the selected instance", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.click(screen.getByLabelText("Instance actions"));
+    await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+
+    const props = useModalStore.getState().modalProps.editInstance as {
+      instance: { id: string };
+    };
+    expect(useModalStore.getState().openModals.editInstance).toBe(true);
+    expect(props.instance.id).toBe("instance-1");
+  });
+
+  it("opens the add-instance modal from the instances action", async () => {
+    const user = userEvent.setup();
+    renderSidebar();
+
+    await user.click(screen.getByLabelText("Add database"));
+
+    expect(useModalStore.getState().openModals.addInstance).toBe(true);
   });
 
   it("toggles the collapsed state through the store", async () => {

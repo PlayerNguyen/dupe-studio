@@ -70,7 +70,9 @@ use sqlx::migrate::Migrator;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
 
 pub use audit::{AuditLogEntry, AuditService, AuditStatus, NewAuditLogEntry};
-pub use database_instances::{DatabaseInstance, DatabaseInstanceService, NewDatabaseInstance};
+pub use database_instances::{
+    DatabaseInstance, DatabaseInstanceService, NewDatabaseInstance, UpdateDatabaseInstance,
+};
 pub use error::AppDbError;
 
 /// Migrations embedded into the binary at compile time (`migrations/`).

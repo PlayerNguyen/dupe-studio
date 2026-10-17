@@ -1,38 +1,51 @@
 import type { ComponentType } from "react";
 
+import type { DatabaseInstance } from "../types/storage";
 import { AboutModal } from "./AboutModal";
+import { AddInstanceModal } from "./AddInstanceModal";
+import { EditInstanceModal } from "./EditInstanceModal";
 import { LanguageModal } from "./LanguageModal";
 
-/** Definition of a single registrable global modal. */
-export interface ModalDefinition {
-  /** i18n key for the modal title (see `src/i18n/locales`). */
-  titleKey: string;
-  /** Component rendered inside the modal body. Mounted only while open. */
-  Component: ComponentType;
+/**
+ * Props every registrable modal is opened with.
+ *
+ * Adding an entry here makes `useModal` type-check the props passed to `open`
+ * and gives the IDE autocomplete for the payload. Use `undefined` for modals
+ * that take no props.
+ */
+export interface ModalPropsMap {
+  language: undefined;
+  about: undefined;
+  addInstance: undefined;
+  editInstance: { instance: DatabaseInstance };
 }
+
+/** Union of every registered modal id. */
+export type ModalId = keyof ModalPropsMap;
+
+/** Props a modal id is opened with. */
+export type ModalPropsFor<TId extends ModalId> = ModalPropsMap[TId];
 
 /**
  * Registry of every global modal in the application.
  *
- * Add an entry to make a modal openable through `useModal` and rendered by
- * `ModalHost`; the key becomes a valid {@link ModalId}. The registry maps ids to
- * already-defined components, so the host can render only the open ones.
+ * Each component **defines its own Mantine `<Modal>`** and reads its open state,
+ * close handler and typed props through `useModal`; `ModalHost` only mounts the
+ * components. That keeps per-modal concerns (title, size, styles, layout) next
+ * to the modal body instead of in a shared host.
+ *
+ * To add a modal: add its props to {@link ModalPropsMap} and register the
+ * component here.
  *
  * @example
  * ```ts
- * modalRegistry.language.titleKey; // "common.language.title"
+ * const edit = useModal("editInstance");
+ * edit.open({ instance });
  * ```
  */
-export const modalRegistry = {
-  language: {
-    titleKey: "common.language.title",
-    Component: LanguageModal,
-  },
-  about: {
-    titleKey: "common.about.title",
-    Component: AboutModal,
-  },
-} as const satisfies Record<string, ModalDefinition>;
-
-/** Union of every registered modal id. */
-export type ModalId = keyof typeof modalRegistry;
+export const modalRegistry: Record<ModalId, ComponentType> = {
+  language: LanguageModal,
+  about: AboutModal,
+  addInstance: AddInstanceModal,
+  editInstance: EditInstanceModal,
+};

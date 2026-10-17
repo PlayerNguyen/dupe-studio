@@ -85,6 +85,98 @@ async storageListInstances(page: OffsetPagination, sort: SortSpec) : Promise<Res
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+/**
+ * Creates a saved database connection.
+ * 
+ * # Arguments
+ * 
+ * * `input` - Instance metadata from the add-instance modal. Its `secret_ref`
+ * is ignored: the backend generates the keychain account.
+ * * `password` - Plaintext password to remember, if any.
+ * * `remember` - When `false`, the password is not stored and the instance is
+ * session-only (`secret_ref` stays `NULL`).
+ * * `state` - Injected managed [`AppDb`].
+ * * `secrets` - Injected managed [`SecretStoreState`].
+ * 
+ * # Returns
+ * 
+ * The persisted [`DatabaseInstance`], including its generated `id`,
+ * `secret_ref` and timestamps.
+ * 
+ * # Errors
+ * 
+ * Returns `errors.storage.invalidInput` for invalid metadata,
+ * `errors.storage.secretWriteFailed` when the credential store rejects the
+ * password, or `errors.storage.saveFailed` when the insert fails.
+ */
+async storageCreateInstance(input: NewDatabaseInstance, password: string | null, remember: boolean) : Promise<Result<DatabaseInstance, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("storage_create_instance", { input, password, remember }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Updates a saved database connection.
+ * 
+ * # Arguments
+ * 
+ * * `id` - Instance id to update.
+ * * `input` - New metadata. `secret_ref` is not part of the input.
+ * * `password` - Replacement plaintext password, or `None` to keep the stored
+ * one.
+ * * `remember` - When `false`, any stored password is removed and the instance
+ * becomes session-only.
+ * * `state` - Injected managed [`AppDb`].
+ * * `secrets` - Injected managed [`SecretStoreState`].
+ * 
+ * # Returns
+ * 
+ * The updated [`DatabaseInstance`].
+ * 
+ * # Errors
+ * 
+ * Returns `errors.storage.invalidInput` for invalid metadata,
+ * `errors.storage.secretStoreUnavailable` or `errors.storage.secretWriteFailed`
+ * for credential-store failures, or `errors.storage.saveFailed` when the
+ * update fails.
+ */
+async storageUpdateInstance(id: string, input: UpdateDatabaseInstance, password: string | null, remember: boolean) : Promise<Result<DatabaseInstance, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("storage_update_instance", { id, input, password, remember }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Deletes a saved database connection and its stored password.
+ * 
+ * The credential removal is best-effort; the row is the source of truth.
+ * 
+ * # Arguments
+ * 
+ * * `id` - Instance id to delete.
+ * * `state` - Injected managed [`AppDb`].
+ * * `secrets` - Injected managed [`SecretStoreState`].
+ * 
+ * # Returns
+ * 
+ * `true` when a row was removed, `false` when the id did not exist.
+ * 
+ * # Errors
+ * 
+ * Returns `errors.storage.saveFailed` when the delete fails.
+ */
+async storageDeleteInstance(id: string) : Promise<Result<boolean, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("storage_delete_instance", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -185,7 +277,8 @@ limit?: number }
  * A saved database connection, without its secret.
  * 
  * The password/DSN secret is never stored here; [`DatabaseInstance::secret_ref`]
- * points at an OS keychain entry (see the future `keyring` integration).
+ * points at an OS keychain entry owned by the [`keyring`](crate::keyring)
+ * module.
  */
 export type DatabaseInstance = { 
 /**
@@ -232,6 +325,45 @@ created_at: string;
  * Last update timestamp (ISO-8601 UTC).
  */
 updated_at: string }
+/**
+ * Input for [`DatabaseInstanceService::create`](crate::app_db::DatabaseInstanceService::create).
+ */
+export type NewDatabaseInstance = { 
+/**
+ * Display name chosen by the user.
+ */
+name: string; 
+/**
+ * Backend kind, for example `mysql`.
+ */
+kind: string; 
+/**
+ * Host name or address.
+ */
+host: string | null; 
+/**
+ * TCP port.
+ */
+port: number | null; 
+/**
+ * Default database/schema name.
+ */
+database_name: string | null; 
+/**
+ * Login user.
+ */
+username: string | null; 
+/**
+ * Keychain reference for the secret.
+ * 
+ * Ignored by [`DatabaseInstanceService::create_with_secret`](crate::app_db::DatabaseInstanceService::create_with_secret):
+ * the service generates the account and owns this field.
+ */
+secret_ref: string | null; 
+/**
+ * Whether the user pinned the connection. Defaults to `false`.
+ */
+is_favorite?: boolean }
 /**
  * Offset request as sent by the frontend.
  * 
@@ -337,6 +469,42 @@ export type SortSpec = {
  * Ordered sort fields. Empty means "use the endpoint default".
  */
 fields: SortField[] }
+/**
+ * Input for updating a saved connection's metadata.
+ * 
+ * The keychain reference is deliberately absent: the backend keeps ownership
+ * of `secret_ref` and only changes it when the password or the "remember"
+ * choice changes.
+ */
+export type UpdateDatabaseInstance = { 
+/**
+ * Display name chosen by the user.
+ */
+name: string; 
+/**
+ * Backend kind, for example `mysql`.
+ */
+kind: string; 
+/**
+ * Host name or address.
+ */
+host: string | null; 
+/**
+ * TCP port.
+ */
+port: number | null; 
+/**
+ * Default database/schema name.
+ */
+database_name: string | null; 
+/**
+ * Login user.
+ */
+username: string | null; 
+/**
+ * Whether the user pinned the connection.
+ */
+is_favorite?: boolean }
 
 /** tauri-specta globals **/
 

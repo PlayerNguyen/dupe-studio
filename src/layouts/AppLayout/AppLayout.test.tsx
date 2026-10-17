@@ -1,10 +1,20 @@
 import { MantineProvider } from "@mantine/core";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createQueryClient } from "../../config/configureQueryClient";
 import { useAppStore } from "../../store/appStore";
 import { AppLayout } from ".";
+
+vi.mock("../../services/storage/useInstances", () => ({
+  useInstances: () => ({
+    data: { items: [] },
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 /**
  * Renders {@link AppLayout} with a small child route table.
@@ -29,7 +39,9 @@ function renderLayout(initialPath = "/") {
 
   return render(
     <MantineProvider>
-      <RouterProvider router={router} />
+      <QueryClientProvider client={createQueryClient()}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     </MantineProvider>,
   );
 }
