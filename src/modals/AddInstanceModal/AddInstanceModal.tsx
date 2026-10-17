@@ -13,6 +13,7 @@ import {
   firstAvailableDatabase,
 } from "./availableDatabases";
 import { DatabaseKindList } from "./components/DatabaseKindList";
+import type { CreateInstancePayload } from "./types";
 
 /** Id shared by the engine form and the footer's submit button. */
 const FORM_ID = "add-instance-form";
@@ -46,7 +47,8 @@ export function AddInstanceModal() {
   const active = findAvailableDatabase(kind) ?? firstAvailableDatabase();
 
   const mutation = useMutation({
-    mutationFn: createInstance,
+    mutationFn: (payload: CreateInstancePayload) =>
+      createInstance(payload.input, payload.password, payload.remember),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: storageQueryKeys.instances,
@@ -90,7 +92,7 @@ export function AddInstanceModal() {
             formId: FORM_ID,
             isSubmitting: mutation.isPending,
             error,
-            onSubmit: (input) => mutation.mutate(input),
+            onSubmit: (payload) => mutation.mutate(payload),
           })}
         </div>
       </div>

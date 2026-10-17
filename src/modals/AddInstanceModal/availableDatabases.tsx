@@ -14,6 +14,8 @@ import type { AvailableDatabase, MySqlDatabaseDraft } from "./types";
  */
 const mysqlInitialValues: MySqlDatabaseDraft = {
   instanceName: "",
+  password: "",
+  remember: true,
   isFavorite: false,
   host: "127.0.0.1",
   port: 3306,

@@ -6,6 +6,7 @@ export {
 } from "./availableDatabases";
 export type {
   AvailableDatabase,
+  CreateInstancePayload,
   DatabaseFormRenderProps,
   DatabaseInstanceDraft,
   DatabaseInstanceFormProps,

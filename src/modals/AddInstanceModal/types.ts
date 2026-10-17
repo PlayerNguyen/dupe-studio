@@ -8,13 +8,23 @@ import type { NewDatabaseInstance } from "../../types/storage";
  * Fields every engine form must produce.
  *
  * Engine-specific drafts extend this interface, so the modal shell can rely on
- * `instanceName` and `isFavorite` without knowing which engine is selected.
- * SQLite, for example, can add a file-path field instead of `host`/`port`
- * without changing this base contract.
+ * `instanceName`, the credential fields and `isFavorite` without knowing which
+ * engine is selected. SQLite, for example, can add a file-path field instead of
+ * `host`/`port` without changing this base contract.
  */
 export interface DatabaseInstanceDraft {
   /** User-visible name of the saved instance. Required by every engine. */
   instanceName: string;
+  /**
+   * Password entered for this connection.
+   *
+   * It is only sent to the backend once on create/update; the backend decides
+   * whether to store it in the OS credential store. It is never persisted in
+   * SQLite.
+   */
+  password: string;
+  /** Whether the backend should remember the password in the OS keychain. */
+  remember: boolean;
   /** Whether the user pinned the instance to the top of the list. */
   isFavorite: boolean;
 }
@@ -66,6 +76,21 @@ export interface DatabaseInstanceFormProps<
   error: string | null;
 }
 
+/**
+ * Payload a form submits once the engine registration has mapped its metadata.
+ *
+ * Credentials travel next to the metadata so the registry can keep mapping the
+ * engine-specific columns while the shell stays engine-agnostic.
+ */
+export interface CreateInstancePayload {
+  /** Metadata mapped by the engine registration. */
+  input: NewDatabaseInstance;
+  /** Plaintext password, or `null` when the user left it empty. */
+  password: string | null;
+  /** Whether the backend should store the password. */
+  remember: boolean;
+}
+
 /** Props used by {@link AvailableDatabase.renderForm}. */
 export interface DatabaseFormRenderProps {
   /** Id shared by the engine form and the modal footer submit button. */
@@ -74,8 +99,8 @@ export interface DatabaseFormRenderProps {
   isSubmitting: boolean;
   /** Localized backend error to show inside the form. */
   error: string | null;
-  /** Receives a ready-to-persist payload from the engine registration. */
-  onSubmit: (input: NewDatabaseInstance) => void;
+  /** Receives the metadata plus credentials from the engine registration. */
+  onSubmit: (payload: CreateInstancePayload) => void;
 }
 
 /**

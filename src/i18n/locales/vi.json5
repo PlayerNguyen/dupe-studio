@@ -57,6 +57,7 @@
       empty: "Chưa có kết nối nào.",
       loading: "Đang tải danh sách…",
       error: "Không thể tải danh sách kết nối.",
+      connectFailed: "Không thể kết nối tới cơ sở dữ liệu này.",
       add: "Thêm cơ sở dữ liệu",
     },
     add: {
@@ -71,6 +72,10 @@
         databaseName: "Cơ sở dữ liệu",
         databaseNamePlaceholder: "Không bắt buộc",
         username: "Tên đăng nhập",
+        password: "Mật khẩu",
+        passwordPlaceholder: "Để trống nếu không cần mật khẩu",
+        remember: "Lưu mật khẩu",
+        rememberDescription: "Lưu mật khẩu vào kho thông tin xác thực của hệ thống.",
         favorite: "Ghim vào yêu thích",
         favoriteDescription: "Kết nối được ghim sẽ hiển thị đầu danh sách.",
       },

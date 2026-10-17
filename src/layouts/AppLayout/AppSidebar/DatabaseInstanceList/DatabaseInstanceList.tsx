@@ -1,16 +1,18 @@
 import {
   ActionIcon,
-  Box,
   Group,
   Stack,
   Text,
   ThemeIcon,
   Tooltip,
+  UnstyledButton,
 } from "@mantine/core";
+import { useMutation } from "@tanstack/react-query";
 import { Database, Plus, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useModal } from "../../../../modals";
+import { connectInstance } from "../../../../services/database/databaseService";
 import { useInstances } from "../../../../services/storage/useInstances";
 
 /** Props for {@link DatabaseInstanceList}. */
@@ -25,21 +27,30 @@ export interface DatabaseInstanceListProps {
  * Reads the shared {@link useInstances} query, so it stays in sync with the
  * add-instance modal: the modal invalidates the instances key after a
  * successful insert and this list refetches. The section header carries the
- * action that opens the add-instance modal, which keeps creation reachable
- * from any page.
+ * action that opens the add-instance modal, which keeps creation reachable from
+ * any page.
  *
- * In the collapsed rail the same data is rendered as icon buttons with
- * tooltipped names, matching the static navigation entries.
+ * Selecting an instance calls `connectInstance`, which resolves the password
+ * from the OS credential store in the backend; a session-only instance surfaces
+ * `errors.storage.secretMissing` until a password prompt exists. In the
+ * collapsed rail the same data is rendered as icon buttons with tooltipped
+ * names, matching the static navigation entries.
  *
  * @param props - Whether the sidebar is collapsed.
- * @returns The saved-instance list, its loading/empty/error states and the
- *   add action.
+ * @returns The saved-instance list, its loading/empty/error states, the add
+ *   action and the connect feedback.
  */
 export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
   const { t } = useTranslation();
   const addInstance = useModal("addInstance");
   const { data, isLoading, isError } = useInstances();
   const instances = data?.items ?? [];
+
+  const connectMutation = useMutation({
+    mutationFn: (instanceId: string) => connectInstance(instanceId),
+  });
+
+  const connect = (instanceId: string) => connectMutation.mutate(instanceId);
 
   if (collapsed) {
     return (
@@ -63,12 +74,14 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
             withArrow
             offset={8}
           >
-            <Box
+            <UnstyledButton
               aria-label={instance.name}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--mantine-color-dimmed)]"
+              disabled={connectMutation.isPending}
+              onClick={() => connect(instance.id)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--mantine-color-dimmed)] transition-colors hover:bg-[var(--mantine-color-default-hover)] hover:text-[var(--mantine-color-text)]"
             >
               <Database size={20} />
-            </Box>
+            </UnstyledButton>
           </Tooltip>
         ))}
       </Stack>
@@ -118,38 +131,47 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
 
       <Stack gap={2}>
         {instances.map((instance) => (
-          <Group
+          <UnstyledButton
             key={instance.id}
-            gap="xs"
-            wrap="nowrap"
-            px="xs"
-            py={6}
-            className="rounded-lg"
+            onClick={() => connect(instance.id)}
+            disabled={connectMutation.isPending}
+            aria-label={instance.name}
             data-testid="database-instance"
+            className="w-full rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-[var(--mantine-color-default-hover)] disabled:opacity-60"
           >
-            <ThemeIcon size="sm" radius="md" variant="light" color="brand">
-              <Database size={14} />
-            </ThemeIcon>
-            <div className="min-w-0 flex-1">
-              <Text size="sm" truncate>
-                {instance.name}
-              </Text>
-              <Text c="dimmed" size="xs" truncate>
-                {t(`database.kinds.${instance.kind}.label`, {
-                  defaultValue: instance.kind,
-                })}
-              </Text>
-            </div>
-            {instance.is_favorite ? (
-              <Star
-                size={14}
-                className="shrink-0 text-brand"
-                fill="currentColor"
-              />
-            ) : null}
-          </Group>
+            <Group gap="xs" wrap="nowrap">
+              <ThemeIcon size="sm" radius="md" variant="light" color="brand">
+                <Database size={14} />
+              </ThemeIcon>
+              <div className="min-w-0 flex-1">
+                <Text size="sm" truncate>
+                  {instance.name}
+                </Text>
+                <Text c="dimmed" size="xs" truncate>
+                  {t(`database.kinds.${instance.kind}.label`, {
+                    defaultValue: instance.kind,
+                  })}
+                </Text>
+              </div>
+              {instance.is_favorite ? (
+                <Star
+                  size={14}
+                  className="shrink-0 text-brand"
+                  fill="currentColor"
+                />
+              ) : null}
+            </Group>
+          </UnstyledButton>
         ))}
       </Stack>
+
+      {connectMutation.isError ? (
+        <Text c="red" size="xs" px="xs">
+          {connectMutation.error instanceof Error
+            ? connectMutation.error.message
+            : t("database.instances.connectFailed")}
+        </Text>
+      ) : null}
     </Stack>
   );
 }

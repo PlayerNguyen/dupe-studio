@@ -46,7 +46,13 @@ export function defineDatabase<TDraft extends DatabaseInstanceDraft>(
         initialValues={registration.initialValues}
         isSubmitting={isSubmitting}
         error={error}
-        onSubmit={(values) => onSubmit(registration.toInput(values))}
+        onSubmit={(values) =>
+          onSubmit({
+            input: registration.toInput(values),
+            password: values.password.length > 0 ? values.password : null,
+            remember: values.remember,
+          })
+        }
       />
     ),
   };

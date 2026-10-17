@@ -3,6 +3,7 @@ import {
   Button,
   Group,
   NumberInput,
+  PasswordInput,
   Stack,
   Switch,
   Text,
@@ -22,12 +23,13 @@ import type {
 /**
  * MySQL connection form rendered in the right pane of the add-instance modal.
  *
- * Collects the display name and the connection metadata stored in
- * `database_instances` (`host`, `port`, `database_name`, `username`). Defaults
- * come from the registry entry in `availableDatabases.tsx`, so a new engine can
- * change its defaults without touching this component. Password entry is
- * intentionally absent until the OS keychain integration lands; `secret_ref`
- * stays `null`.
+ * Collects the display name, the connection metadata stored in
+ * `database_instances` (`host`, `port`, `database_name`, `username`) and the
+ * password. Defaults come from the registry entry in
+ * `availableDatabases.tsx`, so a new engine can change its defaults without
+ * touching this component. The password is sent to the backend once on submit;
+ * the "Remember password" switch decides whether it lands in the OS credential
+ * store, and it is used directly for the connection test.
  *
  * The form is uncontrolled with respect to the modal shell: it owns a Mantine
  * `useForm` instance, validates on submit, and calls `onSubmit` only with a
@@ -76,7 +78,7 @@ export function MySqlInstanceForm({
       host: form.values.host.trim(),
       port: Number(form.values.port),
       username: form.values.username.trim(),
-      password: "",
+      password: form.values.password,
       database: form.values.databaseName.trim() || null,
     });
   };
@@ -139,6 +141,14 @@ export function MySqlInstanceForm({
         {...form.getInputProps("username")}
       />
 
+      <PasswordInput
+        label={t("database.add.fields.password")}
+        placeholder={t("database.add.fields.passwordPlaceholder")}
+        autoComplete="new-password"
+        disabled={isSubmitting}
+        {...form.getInputProps("password")}
+      />
+
       <Group gap="sm">
         <Button
           type="button"
@@ -163,6 +173,17 @@ export function MySqlInstanceForm({
           </Text>
         ) : null}
       </Group>
+
+      <Stack gap={2}>
+        <Switch
+          label={t("database.add.fields.remember")}
+          disabled={isSubmitting}
+          {...form.getInputProps("remember", { type: "checkbox" })}
+        />
+        <span className="text-xs text-[var(--mantine-color-dimmed)]">
+          {t("database.add.fields.rememberDescription")}
+        </span>
+      </Stack>
 
       <Stack gap={2}>
         <Switch

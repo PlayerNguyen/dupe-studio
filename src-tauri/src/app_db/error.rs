@@ -6,6 +6,7 @@
 
 use thiserror::Error;
 
+use crate::keyring::KeyringError;
 use crate::pagination::PaginationError;
 
 /// Everything that can go wrong while opening, migrating or querying the
@@ -38,6 +39,10 @@ pub enum AppDbError {
     /// translates [`AppDbError::i18n_key`] instead.
     #[error("invalid input for `{0}`")]
     InvalidInput(&'static str),
+
+    /// A credential store operation failed while saving a password.
+    #[error(transparent)]
+    Secret(#[from] KeyringError),
 }
 
 impl AppDbError {
@@ -66,6 +71,7 @@ impl AppDbError {
                 "errors.storage.unknownSortField"
             }
             Self::InvalidInput(_) => "errors.storage.invalidInput",
+            Self::Secret(error) => error.i18n_key(),
             Self::Io(_) | Self::Migration(_) | Self::Sqlx(_) | Self::NotFound(_) => {
                 "errors.storage.failed"
             }

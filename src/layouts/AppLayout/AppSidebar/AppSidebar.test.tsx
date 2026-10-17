@@ -1,12 +1,22 @@
 import { MantineProvider } from "@mantine/core";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { createQueryClient } from "../../../config/configureQueryClient";
 import { useAppStore } from "../../../store/appStore";
 import { useModalStore } from "../../../store/modalStore";
 import { AppSidebar } from ".";
+
+const connectMocks = vi.hoisted(() => ({
+  connectInstance: vi.fn(),
+}));
+
+vi.mock("../../../services/database/databaseService", () => ({
+  connectInstance: connectMocks.connectInstance,
+}));
 
 vi.mock("../../../services/storage/useInstances", () => ({
   useInstances: () => ({
@@ -40,10 +50,12 @@ function LocationProbe() {
 function renderSidebar(initialPath = "/") {
   return render(
     <MantineProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <AppSidebar />
-        <LocationProbe />
-      </MemoryRouter>
+      <QueryClientProvider client={createQueryClient()}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <AppSidebar />
+          <LocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>
     </MantineProvider>,
   );
 }
@@ -52,6 +64,7 @@ describe("AppSidebar", () => {
   beforeEach(() => {
     useAppStore.getState().reset();
     useModalStore.getState().reset();
+    connectMocks.connectInstance.mockReset();
   });
 
   it("renders the brand and every navigation entry", () => {
@@ -94,6 +107,16 @@ describe("AppSidebar", () => {
 
     expect(screen.getByText("Databases")).toBeInTheDocument();
     expect(screen.getByText("Local MySQL")).toBeInTheDocument();
+  });
+
+  it("connects to a saved instance when selected", async () => {
+    const user = userEvent.setup();
+    connectMocks.connectInstance.mockResolvedValue(undefined);
+    renderSidebar();
+
+    await user.click(screen.getByRole("button", { name: "Local MySQL" }));
+
+    expect(connectMocks.connectInstance).toHaveBeenCalledWith("instance-1");
   });
 
   it("opens the add-instance modal from the instances action", async () => {

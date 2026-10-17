@@ -12,10 +12,11 @@ mod sort;
 use uuid::Uuid;
 
 use super::{AppDb, AppDbError};
+use crate::keyring::{SecretStore, account_for};
 use crate::pagination::sql;
 use crate::pagination::{OffsetPageQuery, Page, SortSpec};
 
-pub use models::{DatabaseInstance, NewDatabaseInstance};
+pub use models::{DatabaseInstance, NewDatabaseInstance, UpdateDatabaseInstance};
 
 /// Read/write service for saved database connections.
 ///
@@ -96,44 +97,179 @@ impl DatabaseInstanceService {
     /// when an explicit port is outside `1..=65535`. Returns
     /// [`AppDbError::Sqlx`] when the insert fails.
     pub async fn create(&self, new: NewDatabaseInstance) -> Result<DatabaseInstance, AppDbError> {
-        let mut new = new;
-        new.name = new.name.trim().to_string();
-        new.kind = new.kind.trim().to_string();
-
-        if new.name.is_empty() {
-            return Err(AppDbError::InvalidInput("name"));
-        }
-        if new.kind.is_empty() {
-            return Err(AppDbError::InvalidInput("kind"));
-        }
-        if let Some(port) = new.port
-            && !(1..=65535).contains(&port)
-        {
-            return Err(AppDbError::InvalidInput("port"));
-        }
-
-        let row = sqlx::query_as::<_, DatabaseInstance>(
-            "INSERT INTO database_instances \
-               (id, name, kind, host, port, database_name, username, secret_ref, is_favorite) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
-             RETURNING *",
-        )
-        .bind(Uuid::new_v4().to_string())
-        .bind(new.name)
-        .bind(new.kind)
-        .bind(new.host)
-        .bind(new.port)
-        .bind(new.database_name)
-        .bind(new.username)
-        .bind(new.secret_ref)
-        .bind(new.is_favorite)
-        .fetch_one(self.db.pool())
-        .await?;
-
-        Ok(row)
+        self.insert(Uuid::new_v4().to_string(), new).await
     }
 
-    /// Deletes a saved connection.
+    /// Inserts a new saved connection and stores its password first.
+    ///
+    /// The instance id and `secret_ref` are generated here: callers never
+    /// choose the keychain account. When `password` is present (and non-empty)
+    /// the secret is written to `store` **before** the row; if the insert then
+    /// fails, the secret is deleted again so no dangling credential remains.
+    /// Passing `None` creates a session-only connection whose `secret_ref`
+    /// stays `NULL`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppDbError::Secret`] when the keychain write fails,
+    /// [`AppDbError::InvalidInput`] for invalid metadata, or
+    /// [`AppDbError::Sqlx`] when the insert fails.
+    pub async fn create_with_secret(
+        &self,
+        store: &dyn SecretStore,
+        new: NewDatabaseInstance,
+        password: Option<&str>,
+    ) -> Result<DatabaseInstance, AppDbError> {
+        let id = Uuid::new_v4().to_string();
+        let password = password.filter(|value| !value.is_empty());
+        let secret_ref = password.map(|_| account_for(&id));
+
+        if let (Some(account), Some(password)) = (&secret_ref, password) {
+            store.set(account, password)?;
+        }
+
+        let mut new = new;
+        new.secret_ref = secret_ref.clone();
+
+        match self.insert(id, new).await {
+            Ok(row) => Ok(row),
+            Err(error) => {
+                if let Some(account) = secret_ref {
+                    let _ = store.delete(&account);
+                }
+                Err(error)
+            }
+        }
+    }
+
+    /// Updates a saved connection and keeps its keychain entry in sync.
+    ///
+    /// - `remember` + password: writes the secret and keeps/sets `secret_ref`.
+    /// - `remember` without password: keeps the existing secret (if any).
+    /// - `!remember`: clears `secret_ref` and deletes the entry after the row
+    ///   update succeeds.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppDbError::NotFound`] when the id does not exist,
+    /// [`AppDbError::Secret`] when the keychain write fails,
+    /// [`AppDbError::InvalidInput`] for invalid metadata, or
+    /// [`AppDbError::Sqlx`] when the update fails.
+    pub async fn update_with_secret(
+        &self,
+        store: &dyn SecretStore,
+        id: &str,
+        changes: UpdateDatabaseInstance,
+        password: Option<&str>,
+        remember: bool,
+    ) -> Result<DatabaseInstance, AppDbError> {
+        let existing = self
+            .get(id)
+            .await?
+            .ok_or_else(|| AppDbError::NotFound(id.to_string()))?;
+
+        let mut changes = changes;
+        changes.name = changes.name.trim().to_string();
+        changes.kind = changes.kind.trim().to_string();
+        Self::validate(&changes.name, &changes.kind, changes.port)?;
+
+        let password = password.filter(|value| !value.is_empty());
+        let mut newly_stored = None;
+
+        let secret_ref = if remember {
+            match (existing.secret_ref.clone(), password) {
+                (Some(account), Some(password)) => {
+                    store.set(&account, password)?;
+                    Some(account)
+                }
+                (Some(account), None) => Some(account),
+                (None, Some(password)) => {
+                    let account = account_for(id);
+                    store.set(&account, password)?;
+                    newly_stored = Some(account.clone());
+                    Some(account)
+                }
+                (None, None) => None,
+            }
+        } else {
+            None
+        };
+
+        let previous_secret = if remember {
+            None
+        } else {
+            existing.secret_ref.clone()
+        };
+
+        let result = sqlx::query_as::<_, DatabaseInstance>(
+            "UPDATE database_instances \
+                SET name = ?, kind = ?, host = ?, port = ?, database_name = ?, \
+                    username = ?, secret_ref = ?, is_favorite = ?, \
+                    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') \
+              WHERE id = ? \
+              RETURNING *",
+        )
+        .bind(changes.name)
+        .bind(changes.kind)
+        .bind(changes.host)
+        .bind(changes.port)
+        .bind(changes.database_name)
+        .bind(changes.username)
+        .bind(secret_ref)
+        .bind(changes.is_favorite)
+        .bind(id)
+        .fetch_one(self.db.pool())
+        .await;
+
+        match result {
+            Ok(row) => {
+                if let Some(account) = previous_secret {
+                    let _ = store.delete(&account);
+                }
+                Ok(row)
+            }
+            Err(error) => {
+                if let Some(account) = newly_stored {
+                    let _ = store.delete(&account);
+                }
+                Err(error.into())
+            }
+        }
+    }
+
+    /// Deletes a saved connection and removes its keychain entry.
+    ///
+    /// The row is deleted first; removing the credential is best-effort, so a
+    /// keychain failure cannot leave a row pointing at a missing secret.
+    ///
+    /// # Returns
+    ///
+    /// `true` when a row was removed, `false` when the id did not exist.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AppDbError::Sqlx`] when the row lookup or delete fails.
+    pub async fn delete_with_secret(
+        &self,
+        store: &dyn SecretStore,
+        id: &str,
+    ) -> Result<bool, AppDbError> {
+        let Some(existing) = self.get(id).await? else {
+            return Ok(false);
+        };
+
+        let removed = self.delete(id).await?;
+        if removed && let Some(account) = existing.secret_ref {
+            let _ = store.delete(&account);
+        }
+
+        Ok(removed)
+    }
+
+    /// Deletes a saved connection row.
+    ///
+    /// Prefer [`DatabaseInstanceService::delete_with_secret`] so the keychain
+    /// entry is cleaned up too; this method is the row-only primitive.
     ///
     /// # Returns
     ///
@@ -150,11 +286,60 @@ impl DatabaseInstanceService {
 
         Ok(result.rows_affected() > 0)
     }
+
+    /// Inserts a row with an explicit id, generating `created_at`/`updated_at`.
+    async fn insert(
+        &self,
+        id: String,
+        mut new: NewDatabaseInstance,
+    ) -> Result<DatabaseInstance, AppDbError> {
+        new.name = new.name.trim().to_string();
+        new.kind = new.kind.trim().to_string();
+        Self::validate(&new.name, &new.kind, new.port)?;
+
+        let row = sqlx::query_as::<_, DatabaseInstance>(
+            "INSERT INTO database_instances \
+               (id, name, kind, host, port, database_name, username, secret_ref, is_favorite) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) \
+             RETURNING *",
+        )
+        .bind(id)
+        .bind(new.name)
+        .bind(new.kind)
+        .bind(new.host)
+        .bind(new.port)
+        .bind(new.database_name)
+        .bind(new.username)
+        .bind(new.secret_ref)
+        .bind(new.is_favorite)
+        .fetch_one(self.db.pool())
+        .await?;
+
+        Ok(row)
+    }
+
+    /// Validates normalized metadata shared by create and update.
+    fn validate(name: &str, kind: &str, port: Option<i64>) -> Result<(), AppDbError> {
+        if name.is_empty() {
+            return Err(AppDbError::InvalidInput("name"));
+        }
+        if kind.is_empty() {
+            return Err(AppDbError::InvalidInput("kind"));
+        }
+        if let Some(port) = port
+            && !(1..=65535).contains(&port)
+        {
+            return Err(AppDbError::InvalidInput("port"));
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::keyring::{InMemorySecretStore, SecretStore, account_for};
     use crate::pagination::{OffsetPagination, SortDirection, SortField};
 
     async fn seed(store: &AppDb, count: usize) {
@@ -243,6 +428,141 @@ mod tests {
             .await
             .unwrap_err();
         assert!(matches!(bad_port, AppDbError::InvalidInput("port")));
+    }
+
+    /// A valid create input shared by the credential tests.
+    fn local_instance() -> NewDatabaseInstance {
+        NewDatabaseInstance {
+            name: "local".into(),
+            kind: "mysql".into(),
+            host: Some("127.0.0.1".into()),
+            port: Some(3306),
+            database_name: Some("app".into()),
+            username: Some("root".into()),
+            secret_ref: None,
+            is_favorite: false,
+        }
+    }
+
+    /// Update input derived from a saved row.
+    fn update_for(instance: &DatabaseInstance) -> UpdateDatabaseInstance {
+        UpdateDatabaseInstance {
+            name: instance.name.clone(),
+            kind: instance.kind.clone(),
+            host: instance.host.clone(),
+            port: instance.port,
+            database_name: instance.database_name.clone(),
+            username: instance.username.clone(),
+            is_favorite: instance.is_favorite,
+        }
+    }
+
+    #[tokio::test]
+    async fn create_with_secret_stores_the_password_and_reference() {
+        let db = AppDb::connect_in_memory().await.unwrap();
+        let secrets = InMemorySecretStore::new();
+
+        let created = db
+            .database_instances()
+            .create_with_secret(&secrets, local_instance(), Some("s3cr3t"))
+            .await
+            .unwrap();
+
+        let account = created.secret_ref.clone().expect("secret_ref is set");
+        assert_eq!(account, account_for(&created.id));
+        assert_eq!(secrets.get(&account).unwrap(), Some("s3cr3t".into()));
+    }
+
+    #[tokio::test]
+    async fn create_without_a_password_stays_session_only() {
+        let db = AppDb::connect_in_memory().await.unwrap();
+        let secrets = InMemorySecretStore::new();
+
+        let created = db
+            .database_instances()
+            .create_with_secret(&secrets, local_instance(), None)
+            .await
+            .unwrap();
+
+        assert_eq!(created.secret_ref, None);
+        assert!(secrets.is_empty());
+    }
+
+    #[tokio::test]
+    async fn create_with_secret_rolls_back_on_insert_failure() {
+        let db = AppDb::connect_in_memory().await.unwrap();
+        let secrets = InMemorySecretStore::new();
+
+        let result = db
+            .database_instances()
+            .create_with_secret(
+                &secrets,
+                NewDatabaseInstance {
+                    name: "   ".into(),
+                    ..local_instance()
+                },
+                Some("s3cr3t"),
+            )
+            .await;
+
+        assert!(matches!(result, Err(AppDbError::InvalidInput("name"))));
+        assert!(secrets.is_empty());
+    }
+
+    #[tokio::test]
+    async fn update_with_secret_replaces_and_clears_the_password() {
+        let db = AppDb::connect_in_memory().await.unwrap();
+        let secrets = InMemorySecretStore::new();
+        let service = db.database_instances();
+
+        let created = service
+            .create_with_secret(&secrets, local_instance(), Some("old"))
+            .await
+            .unwrap();
+        let account = created.secret_ref.clone().expect("secret_ref is set");
+
+        let replaced = service
+            .update_with_secret(
+                &secrets,
+                &created.id,
+                update_for(&created),
+                Some("new"),
+                true,
+            )
+            .await
+            .unwrap();
+        assert_eq!(replaced.secret_ref.as_deref(), Some(account.as_str()));
+        assert_eq!(secrets.get(&account).unwrap(), Some("new".into()));
+
+        let cleared = service
+            .update_with_secret(&secrets, &created.id, update_for(&created), None, false)
+            .await
+            .unwrap();
+        assert_eq!(cleared.secret_ref, None);
+        assert_eq!(secrets.get(&account).unwrap(), None);
+    }
+
+    #[tokio::test]
+    async fn delete_with_secret_removes_the_credential() {
+        let db = AppDb::connect_in_memory().await.unwrap();
+        let secrets = InMemorySecretStore::new();
+        let service = db.database_instances();
+
+        let created = service
+            .create_with_secret(&secrets, local_instance(), Some("s3cr3t"))
+            .await
+            .unwrap();
+        let account = created.secret_ref.clone().expect("secret_ref is set");
+
+        assert!(
+            service
+                .delete_with_secret(&secrets, &created.id)
+                .await
+                .unwrap()
+        );
+
+        assert_eq!(secrets.get(&account).unwrap(), None);
+        assert!(service.get(&created.id).await.unwrap().is_none());
     }
 
     #[tokio::test]

@@ -57,6 +57,7 @@
       empty: "No databases yet.",
       loading: "Loading databases…",
       error: "Could not load databases.",
+      connectFailed: "Could not connect to this database.",
       add: "Add database",
     },
     add: {
@@ -71,6 +72,10 @@
         databaseName: "Database",
         databaseNamePlaceholder: "Optional",
         username: "Username",
+        password: "Password",
+        passwordPlaceholder: "Leave empty to connect without one",
+        remember: "Remember password",
+        rememberDescription: "Stores the password in the system credential store.",
         favorite: "Pin to favorites",
         favoriteDescription: "Pinned instances appear first in the list.",
       },

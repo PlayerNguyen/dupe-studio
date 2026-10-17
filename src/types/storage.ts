@@ -19,4 +19,5 @@ export type {
   SortDirection,
   SortField,
   SortSpec,
+  UpdateDatabaseInstance,
 } from "../generated/bindings";

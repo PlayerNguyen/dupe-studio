@@ -87,6 +87,7 @@ describe("AddInstanceModal", () => {
       "Local MySQL",
     );
     await user.type(screen.getByRole("textbox", { name: /Database/ }), "app");
+    await user.type(screen.getByLabelText("Password"), "hunter2");
     await user.click(screen.getByRole("button", { name: "Add instance" }));
 
     await waitFor(() => {
@@ -102,6 +103,8 @@ describe("AddInstanceModal", () => {
       secret_ref: null,
       is_favorite: false,
     });
+    expect(mocks.createInstance.mock.calls[0]?.[1]).toBe("hunter2");
+    expect(mocks.createInstance.mock.calls[0]?.[2]).toBe(true);
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["storage", "instances"],
     });
@@ -113,6 +116,7 @@ describe("AddInstanceModal", () => {
     renderModal();
     mocks.testConnection.mockResolvedValue(undefined);
 
+    await user.type(screen.getByLabelText("Password"), "hunter2");
     await user.click(screen.getByRole("button", { name: "Test connection" }));
 
     await waitFor(() => {
@@ -123,7 +127,7 @@ describe("AddInstanceModal", () => {
       host: "127.0.0.1",
       port: 3306,
       username: "root",
-      password: "",
+      password: "hunter2",
       database: null,
     });
     expect(
@@ -171,6 +175,8 @@ describe("AddInstanceModal", () => {
     expect(mysql.kind).toBe("mysql");
     expect(mysql.initialValues).toMatchObject({
       instanceName: "",
+      password: "",
+      remember: true,
       isFavorite: false,
       host: "127.0.0.1",
       port: 3306,

@@ -39,3 +39,39 @@ export async function testConnection(config: ConnectionConfig): Promise<void> {
     );
   }
 }
+
+/**
+ * Connects to a saved database instance by id.
+ *
+ * Wraps the Rust `db_connect_instance` command. The password is never sent for
+ * instances that remember one: the backend resolves `secret_ref` from the OS
+ * credential store. The optional `password` is only used for session-only
+ * instances.
+ *
+ * @param instanceId - Saved instance to connect.
+ * @param password - Session-only password, when the instance does not remember
+ *   one.
+ * @returns Resolves once the connection is stored as the active connection.
+ * @throws {Error} With a localized message when the instance or its stored
+ *   password is missing, or the connection cannot be opened.
+ *
+ * @example
+ * ```ts
+ * await connectInstance("1b4e28ba-9f4b-4d1e-9a3d-6c2f2f0e7a11");
+ * ```
+ */
+export async function connectInstance(
+  instanceId: string,
+  password?: string,
+): Promise<void> {
+  try {
+    await invoke("db_connect_instance", {
+      instanceId,
+      password: password ?? null,
+    });
+  } catch (error) {
+    throw new Error(
+      translateErrorKey(typeof error === "string" ? error : null),
+    );
+  }
+}
