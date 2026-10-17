@@ -19,6 +19,7 @@
 pub mod app_db;
 pub mod commands;
 pub mod db;
+pub mod keyring;
 pub mod pagination;
 
 use tauri::{Manager, State};

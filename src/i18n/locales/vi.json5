@@ -114,6 +114,9 @@
       unknownSortField: "Trường sắp xếp này không được hỗ trợ.",
       invalidInput: "Một số thông tin kết nối không hợp lệ.",
       saveFailed: "Không thể lưu kết nối cơ sở dữ liệu.",
+      secretMissing: "Mật khẩu đã lưu không còn. Hãy nhập lại.",
+      secretStoreUnavailable: "Kho thông tin xác thực của hệ thống không khả dụng.",
+      secretWriteFailed: "Không thể lưu mật khẩu vào kho thông tin xác thực.",
     },
   },
 }

@@ -114,6 +114,9 @@
       unknownSortField: "That sort field is not supported.",
       invalidInput: "Some connection details are invalid.",
       saveFailed: "Could not save the database instance.",
+      secretMissing: "The saved password is missing. Enter it again.",
+      secretStoreUnavailable: "The system credential store is unavailable.",
+      secretWriteFailed: "Could not save the password to the credential store.",
     },
   },
 }

@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 /// A saved database connection, without its secret.
 ///
 /// The password/DSN secret is never stored here; [`DatabaseInstance::secret_ref`]
-/// points at an OS keychain entry (see the future `keyring` integration).
+/// points at an OS keychain entry owned by the [`keyring`](crate::keyring)
+/// module.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, sqlx::FromRow, specta::Type)]
 pub struct DatabaseInstance {
     /// Primary key (UUID v4).
