@@ -28,16 +28,11 @@ import {
   sidebarBrand,
   sidebarConfig,
 } from "../../../config/configureSidebar";
+import { isSidebarCompacted } from "../../../config/sidebarLayout";
 import { useModal } from "../../../modals";
 import { useAppStore } from "../../../store/appStore";
 import { POPOVER_TRANSITION_DURATION, smoothTransition } from "../../../theme";
 import { cn } from "../../../utils/cn";
-
-/** Sidebar width in pixels when expanded. */
-const EXPANDED_WIDTH = 264;
-
-/** Sidebar width in pixels when collapsed to an icon rail. */
-const COLLAPSED_WIDTH = 76;
 
 /** Renders the brand logo mark shown at the top of the sidebar. */
 function BrandMark() {
@@ -122,27 +117,27 @@ function SettingsMenu() {
 interface SidebarEntryProps {
   /** The navigation entry to render. */
   item: SidebarNavItem;
-  /** Whether the sidebar is in its collapsed icon-rail form. */
-  collapsed: boolean;
+  /** Whether the sidebar is in its compacted icon-rail form. */
+  compacted: boolean;
   /** Whether the entry represents the current location. */
   active: boolean;
 }
 
 /**
- * Renders a single sidebar destination in either the expanded or collapsed
+ * Renders a single sidebar destination in either the expanded or compacted
  * form.
  *
  * Navigation is performed imperatively with `useNavigate` because this is a
  * desktop shell, so anchor semantics (open in new tab) are not required.
  */
-function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
+function SidebarEntry({ item, compacted, active }: SidebarEntryProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const Icon = item.icon;
   const label = t(item.labelKey);
   const handleSelect = () => navigate(item.path);
 
-  if (collapsed) {
+  if (compacted) {
     return (
       <Tooltip label={label} position="right" withArrow offset={8}>
         <UnstyledButton
@@ -180,15 +175,18 @@ function SidebarEntry({ item, collapsed, active }: SidebarEntryProps) {
  *
  * Renders the brand header, the navigation model from
  * `src/config/configureSidebar.tsx`, and a footer settings menu (color scheme
- * + language). The collapsed/expanded state is owned by the Zustand store
- * (`useAppStore`) so it persists across route changes.
+ * + language). The sidebar fills the splitter pane that sizes it
+ * (`src/layouts/AppLayout/AppLayout.tsx`), so the width comes from the store and
+ * the compacted icon rail is derived from it: drag the pane to its minimum (or
+ * click the toggle) and the labels are replaced by the rail.
  *
  * @returns The rendered sidebar navigation rail.
  */
 export function AppSidebar() {
   const { t } = useTranslation();
-  const collapsed = useAppStore((state) => state.sidebarCollapsed);
+  const sidebarWidth = useAppStore((state) => state.sidebarWidth);
   const toggleSidebar = useAppStore((state) => state.toggleSidebar);
+  const compacted = isSidebarCompacted(sidebarWidth);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -196,10 +194,9 @@ export function AppSidebar() {
     <Box
       component="nav"
       aria-label="Primary navigation"
-      className="flex h-full shrink-0 flex-col border-r border-[var(--mantine-color-default-border)] transition-[width] duration-200 ease-out"
-      style={{ width: collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH }}
+      className="flex h-full w-full flex-col"
     >
-      {collapsed ? (
+      {compacted ? (
         <div className="flex flex-col items-center gap-2 px-3 py-3">
           <button
             type="button"
@@ -253,10 +250,10 @@ export function AppSidebar() {
       )}
 
       <ScrollArea className="min-h-0 flex-1" type="hover">
-        <Stack gap="md" px={collapsed ? "xs" : "sm"} py="sm">
+        <Stack gap="md" px={compacted ? "xs" : "sm"} py="sm">
           {sidebarConfig.map((section) => (
             <Stack key={section.id} gap={4}>
-              {collapsed ? (
+              {compacted ? (
                 <div className="mx-auto h-px w-6 bg-[var(--mantine-color-default-border)]" />
               ) : (
                 <Text
@@ -270,12 +267,12 @@ export function AppSidebar() {
                   {t(section.labelKey)}
                 </Text>
               )}
-              <Stack gap={4} align={collapsed ? "center" : "stretch"}>
+              <Stack gap={4} align={compacted ? "center" : "stretch"}>
                 {section.items.map((item) => (
                   <SidebarEntry
                     key={item.id}
                     item={item}
-                    collapsed={collapsed}
+                    compacted={compacted}
                     active={isSidebarItemActive(item, location.pathname)}
                   />
                 ))}
@@ -288,10 +285,10 @@ export function AppSidebar() {
       <div
         className={cn(
           "flex items-center border-t border-[var(--mantine-color-default-border)]",
-          collapsed ? "justify-center py-3" : "px-3 py-2",
+          compacted ? "justify-center py-3" : "px-3 py-2",
         )}
       >
-        {collapsed ? null : (
+        {compacted ? null : (
           <Text c="dimmed" size="xs" className="flex-1">
             v{FRONTEND_VERSION}
           </Text>

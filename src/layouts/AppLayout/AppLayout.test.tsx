@@ -52,4 +52,10 @@ describe("AppLayout", () => {
     expect(screen.getByText("settings content")).toBeInTheDocument();
     expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
   });
+
+  it("exposes a splitter separator that resizes the sidebar", () => {
+    renderLayout();
+
+    expect(screen.getByRole("separator")).toBeInTheDocument();
+  });
 });
