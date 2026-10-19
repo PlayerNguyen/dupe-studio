@@ -87,8 +87,15 @@ MySQL service container that supplies `DUPE_STUDIO_MYSQL_URL`.
 - Non-component modules stay plain files: Zustand stores, hooks, registries, route tables,
   configs and helpers (`store/modalStore.ts`, `modals/useModal.ts`, `modals/registry.ts`,
   `config/configureSidebar.tsx`, `router/routes.tsx`).
-- Global modals: register in `modals/registry.ts`, open via the `useModal` hook backed by
-  `store/modalStore.ts`, and let `<ModalHost />` render them into a portal.
+- Global modals: each modal component defines its own Mantine `<Modal>` and reads its
+  open state plus typed props from `useModal`; register the component in
+  `modals/registry.ts` with its payload in `ModalPropsMap`, and let `<ModalHost />` only
+  mount the registered components. Do not put modal chrome in `ModalHost` and do not add
+  a store just to pass data into a modal.
+- Use Mantine layout primitives (`Flex`, `Stack`, `Group`, `Box`) instead of Tailwind
+  `flex` utility `div`s, and give each scrollable pane its own `ScrollArea`.
+- Render `lucide-react` icons without a `size` prop: `theme/IconProvider` sets the global
+  size (12). A non-default size must be requested.
 
 ## Frontend <-> Rust boundary
 

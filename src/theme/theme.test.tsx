@@ -98,7 +98,7 @@ describe("theme press feedback", () => {
 
   it("lands the class on the rendered elements", () => {
     render(
-      <MantineProvider theme={theme}>
+      <MantineProvider env="test" theme={theme}>
         <Button>Save</Button>
         <ActionIcon aria-label="Refresh" />
       </MantineProvider>,
@@ -116,7 +116,7 @@ describe("theme press feedback", () => {
     // The sidebar footer settings button is an ActionIcon wrapped in
     // Menu.Target, so the class has to survive that clone.
     render(
-      <MantineProvider theme={theme}>
+      <MantineProvider env="test" theme={theme}>
         <Menu position="top">
           <Menu.Target>
             <ActionIcon aria-label="Settings" />

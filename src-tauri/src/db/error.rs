@@ -51,6 +51,11 @@ pub enum DbError {
     #[error("no active database connection")]
     NotConnected,
 
+    /// No password was supplied for a saved connection and none is stored in
+    /// the OS credential store, so the UI must ask for it again.
+    #[error("the saved database password is missing")]
+    MissingSecret,
+
     /// A value returned by the driver could not be converted into JSON.
     #[error("column `{column}` at index {index} could not be decoded: {message}")]
     Decode {
@@ -83,6 +88,48 @@ impl DbError {
             column: column.into(),
             index,
             message: message.into(),
+        }
+    }
+
+    /// Returns the stable i18n key the frontend translates for this error.
+    ///
+    /// Backend commands return these keys (never user-facing prose), and the
+    /// frontend resolves them with `translateErrorKey`, falling back to
+    /// `errors.unknown` for a key it does not know. Keep the keys in
+    /// `errors.database.*` / `errors.storage.*`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use dupe_studio_lib::db::DbError;
+    ///
+    /// assert_eq!(
+    ///     DbError::Unsupported("oracle".into()).i18n_key(),
+    ///     "errors.database.unsupportedEngine"
+    /// );
+    /// assert_eq!(
+    ///     DbError::Config("host must not be empty".into()).i18n_key(),
+    ///     "errors.database.invalidConfig"
+    /// );
+    /// assert_eq!(
+    ///     DbError::NotConnected.i18n_key(),
+    ///     "errors.database.connectionFailed"
+    /// );
+    /// assert_eq!(
+    ///     DbError::MissingSecret.i18n_key(),
+    ///     "errors.storage.secretMissing"
+    /// );
+    /// ```
+    pub fn i18n_key(&self) -> &'static str {
+        match self {
+            Self::Unsupported(_) => "errors.database.unsupportedEngine",
+            Self::Config(_) => "errors.database.invalidConfig",
+            Self::MissingSecret => "errors.storage.secretMissing",
+            Self::Connection(_)
+            | Self::Query(_)
+            | Self::NotConnected
+            | Self::Decode { .. }
+            | Self::Driver(_) => "errors.database.connectionFailed",
         }
     }
 }

@@ -7,15 +7,17 @@ import { createQueryClient } from "../../config/configureQueryClient";
 import { i18n } from "../../i18n";
 import { ModalHost } from "../../modals";
 import { RouterComponent } from "../../router";
-import { cssVariablesResolver, theme } from "../../theme";
+import { cssVariablesResolver, IconProvider, theme } from "../../theme";
 
 /**
  * Root application component.
  *
  * Composes the cross-cutting providers in one place: Mantine (theme + color
- * scheme), i18next (localization), TanStack Query (async state) and the router.
- * `ModalHost` renders the global modals into a portal. This mirrors the
- * reference app's `app/app/index.tsx`, minus the Redux store.
+ * scheme), Lucide icons (global size/theme), i18next (localization), TanStack
+ * Query (async state) and the router. `ModalHost` renders the global modals into
+ * a portal. `IconProvider` sits inside `MantineProvider` so it can read the
+ * active color scheme. This mirrors the reference app's `app/app/index.tsx`,
+ * minus the Redux store.
  *
  * The theme carries the motion tokens and per-component transition defaults,
  * while `cssVariablesResolver` exposes those tokens to `src/globals.css` as
@@ -32,12 +34,14 @@ export function App() {
       cssVariablesResolver={cssVariablesResolver}
       defaultColorScheme="auto"
     >
-      <I18nextProvider i18n={i18n}>
-        <QueryClientProvider client={queryClient}>
-          <RouterComponent />
-          <ModalHost />
-        </QueryClientProvider>
-      </I18nextProvider>
+      <IconProvider>
+        <I18nextProvider i18n={i18n}>
+          <QueryClientProvider client={queryClient}>
+            <RouterComponent />
+            <ModalHost />
+          </QueryClientProvider>
+        </I18nextProvider>
+      </IconProvider>
     </MantineProvider>
   );
 }

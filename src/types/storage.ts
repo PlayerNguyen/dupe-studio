@@ -11,6 +11,7 @@ export type {
   AuditLogEntry,
   CursorPagination,
   DatabaseInstance,
+  NewDatabaseInstance,
   OffsetPagination,
   Page,
   PageDirection,
@@ -18,4 +19,5 @@ export type {
   SortDirection,
   SortField,
   SortSpec,
+  UpdateDatabaseInstance,
 } from "../generated/bindings";

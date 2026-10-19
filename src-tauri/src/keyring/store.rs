@@ -148,48 +148,65 @@ impl SecretStore for KeyringSecretStore {
     }
 }
 
+/// Hermetic [`SecretStore`] used by unit tests.
+///
+/// The production [`KeyringSecretStore`] cannot be exercised in CI, so the
+/// behaviour every caller relies on (round-trip, overwrite, idempotent delete,
+/// missing entry) is asserted against this fake. It is compiled only for tests
+/// and shared with the `app_db` tests that exercise credential orchestration.
+#[cfg(test)]
+#[derive(Default)]
+pub(crate) struct InMemorySecretStore {
+    entries: std::sync::Mutex<std::collections::HashMap<String, String>>,
+}
+
+#[cfg(test)]
+impl InMemorySecretStore {
+    /// Creates an empty store.
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns whether the store holds no entries.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.entries
+            .lock()
+            .expect("in-memory store lock poisoned")
+            .is_empty()
+    }
+}
+
+#[cfg(test)]
+impl SecretStore for InMemorySecretStore {
+    fn set(&self, account: &str, secret: &str) -> Result<(), KeyringError> {
+        self.entries
+            .lock()
+            .expect("in-memory store lock poisoned")
+            .insert(account.to_string(), secret.to_string());
+        Ok(())
+    }
+
+    fn get(&self, account: &str) -> Result<Option<String>, KeyringError> {
+        Ok(self
+            .entries
+            .lock()
+            .expect("in-memory store lock poisoned")
+            .get(account)
+            .cloned())
+    }
+
+    fn delete(&self, account: &str) -> Result<(), KeyringError> {
+        self.entries
+            .lock()
+            .expect("in-memory store lock poisoned")
+            .remove(account);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    /// Hermetic [`SecretStore`] used to test the trait contract.
-    ///
-    /// The production [`KeyringSecretStore`] cannot be exercised in CI, so the
-    /// behaviour every caller relies on (round-trip, overwrite, idempotent
-    /// delete, missing entry) is asserted against this fake.
-    #[derive(Default)]
-    struct InMemorySecretStore {
-        entries: Mutex<HashMap<String, String>>,
-    }
-
-    impl SecretStore for InMemorySecretStore {
-        fn set(&self, account: &str, secret: &str) -> Result<(), KeyringError> {
-            self.entries
-                .lock()
-                .expect("in-memory store lock poisoned")
-                .insert(account.to_string(), secret.to_string());
-            Ok(())
-        }
-
-        fn get(&self, account: &str) -> Result<Option<String>, KeyringError> {
-            Ok(self
-                .entries
-                .lock()
-                .expect("in-memory store lock poisoned")
-                .get(account)
-                .cloned())
-        }
-
-        fn delete(&self, account: &str) -> Result<(), KeyringError> {
-            self.entries
-                .lock()
-                .expect("in-memory store lock poisoned")
-                .remove(account);
-            Ok(())
-        }
-    }
 
     #[test]
     fn account_uses_instance_namespace() {

@@ -22,11 +22,14 @@ pub mod db;
 pub mod keyring;
 pub mod pagination;
 
+use std::sync::Arc;
+
 use tauri::{Manager, State};
 use tokio::sync::RwLock;
 
-use app_db::{AppDb, AppDbError};
-use db::{ConnectionConfig, Database, DbError, DbValue, QueryResult};
+use app_db::{AppDb, AppDbError, DatabaseInstance};
+use db::{ConnectionConfig, Database, DbError, DbKind, DbValue, QueryResult, Secret};
+use keyring::{KeyringSecretStore, SecretStoreState};
 
 #[cfg(all(debug_assertions, not(test)))]
 use specta_typescript::{BigIntExportBehavior, Typescript};
@@ -211,6 +214,128 @@ async fn db_query(
     database.query(&sql, &params).await.map_err(stringify)
 }
 
+/// Opens a throwaway connection, pings it and closes it.
+///
+/// Used by the add-instance form's "Test connection" action. Unlike
+/// [`db_connect`], this never touches the active [`DbState`] connection, so a
+/// failed test cannot drop the connection the user is already working with.
+///
+/// # Arguments
+///
+/// * `config` - Backend kind plus connection fields or a full DSN.
+///
+/// # Returns
+///
+/// `Ok(())` when the server answers the ping.
+///
+/// # Errors
+///
+/// Returns an i18n key (`errors.database.*`) when validation, connecting or the
+/// ping fails; the frontend translates it with `translateErrorKey`.
+#[tauri::command]
+async fn db_test_connection(config: ConnectionConfig) -> Result<(), String> {
+    let database = Database::connect(config)
+        .await
+        .map_err(|error| error.i18n_key().to_string())?;
+
+    let ping = database.ping().await;
+    let close = database.close().await;
+
+    ping.map_err(|error| error.i18n_key().to_string())?;
+    close.map_err(|error| error.i18n_key().to_string())
+}
+
+/// Builds a [`ConnectionConfig`] from a saved instance and its password.
+///
+/// # Errors
+///
+/// Returns [`DbError::Config`] when the stored kind is unknown or an explicit
+/// port falls outside the `u16` range.
+fn connection_config_from_instance(
+    instance: &DatabaseInstance,
+    password: Secret,
+) -> Result<ConnectionConfig, DbError> {
+    let kind: DbKind = instance.kind.parse()?;
+    let mut config = ConnectionConfig::new(kind)
+        .with_host(instance.host.clone().unwrap_or_default())
+        .with_username(instance.username.clone().unwrap_or_default())
+        .with_password(password);
+
+    if let Some(port) = instance.port {
+        let port = u16::try_from(port).map_err(|_| DbError::Config("port out of range".into()))?;
+        config = config.with_port(port);
+    }
+
+    if let Some(database) = &instance.database_name {
+        config = config.with_database(database.clone());
+    }
+
+    Ok(config)
+}
+
+/// Connects using a saved instance, resolving its password from the keychain.
+///
+/// Unlike [`db_connect`], the frontend does not send the stored password: it
+/// sends the instance id, and this command reads the secret from the OS
+/// credential store. A `password` argument is only used for session-only
+/// instances whose `secret_ref` is `NULL`.
+///
+/// # Arguments
+///
+/// * `instance_id` - Saved instance to connect.
+/// * `password` - Session-only password, when the instance does not remember
+///   one.
+/// * `state` - Injected managed [`DbState`].
+/// * `app_db` - Injected managed [`AppDb`].
+/// * `secrets` - Injected managed [`SecretStoreState`].
+///
+/// # Returns
+///
+/// `Ok(())` once the connection is stored in [`DbState`].
+///
+/// # Errors
+///
+/// Returns an i18n key when the instance is missing, the stored password is
+/// missing (`errors.storage.secretMissing`), the credential store fails, or the
+/// connection cannot be opened.
+#[tauri::command]
+async fn db_connect_instance(
+    instance_id: String,
+    password: Option<String>,
+    state: State<'_, DbState>,
+    app_db: State<'_, AppDb>,
+    secrets: State<'_, SecretStoreState>,
+) -> Result<(), String> {
+    let instance = app_db
+        .database_instances()
+        .get(&instance_id)
+        .await
+        .map_err(|error| error.i18n_key().to_string())?
+        .ok_or_else(|| "errors.storage.failed".to_string())?;
+
+    let password = match &instance.secret_ref {
+        Some(account) => secrets
+            .store()
+            .get(account)
+            .map_err(|error| error.i18n_key().to_string())?
+            .ok_or_else(|| "errors.storage.secretMissing".to_string())?,
+        None => password.ok_or_else(|| "errors.storage.secretMissing".to_string())?,
+    };
+
+    let config = connection_config_from_instance(&instance, Secret::new(password))
+        .map_err(|error| error.i18n_key().to_string())?;
+    let database = Database::connect(config)
+        .await
+        .map_err(|error| error.i18n_key().to_string())?;
+
+    let mut guard = state.connection.write().await;
+    if let Some(previous) = guard.take() {
+        let _ = previous.close().await;
+    }
+    *guard = Some(database);
+    Ok(())
+}
+
 /// Renders a [`DbError`] for the frontend.
 fn stringify(error: DbError) -> String {
     error.to_string()
@@ -227,7 +352,10 @@ fn specta_builder() -> Builder<tauri::Wry> {
         greet,
         app_version,
         commands::audit::storage_query_audit,
-        commands::database_instances::storage_list_instances
+        commands::database_instances::storage_list_instances,
+        commands::database_instances::storage_create_instance,
+        commands::database_instances::storage_update_instance,
+        commands::database_instances::storage_delete_instance
     ])
 }
 
@@ -265,6 +393,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(DbState::default())
+        .manage(SecretStoreState::new(Arc::new(KeyringSecretStore::new())))
         .setup(|app| {
             // Open the app-owned SQLite store and bring its schema up to date
             // before any command runs. Migrations are embedded and idempotent,
@@ -286,13 +415,75 @@ pub fn run() {
             greet,
             app_version,
             db_connect,
+            db_connect_instance,
             db_disconnect,
             db_ping,
+            db_test_connection,
             db_execute,
             db_query,
             commands::audit::storage_query_audit,
-            commands::database_instances::storage_list_instances
+            commands::database_instances::storage_list_instances,
+            commands::database_instances::storage_create_instance,
+            commands::database_instances::storage_update_instance,
+            commands::database_instances::storage_delete_instance
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A saved-instance fixture for the resolution helper.
+    fn instance(secret_ref: Option<&str>) -> DatabaseInstance {
+        DatabaseInstance {
+            id: "instance-1".into(),
+            name: "local".into(),
+            kind: "mysql".into(),
+            host: Some("127.0.0.1".into()),
+            port: Some(3306),
+            database_name: Some("app".into()),
+            username: Some("root".into()),
+            secret_ref: secret_ref.map(str::to_string),
+            is_favorite: false,
+            created_at: "2026-01-01T00:00:00.000Z".into(),
+            updated_at: "2026-01-01T00:00:00.000Z".into(),
+        }
+    }
+
+    #[test]
+    fn builds_a_connection_config_from_an_instance() {
+        let config = connection_config_from_instance(&instance(None), Secret::new("pw")).unwrap();
+
+        assert_eq!(config.resolved_port(), 3306);
+        assert_eq!(config.url(), "mysql://root:pw@127.0.0.1:3306/app");
+    }
+
+    #[test]
+    fn rejects_an_unknown_engine() {
+        let mut row = instance(None);
+        row.kind = "oracle".into();
+
+        let error = connection_config_from_instance(&row, Secret::new("pw")).unwrap_err();
+
+        assert!(matches!(error, DbError::Config(_)));
+    }
+
+    #[test]
+    fn rejects_an_out_of_range_port() {
+        let mut row = instance(None);
+        row.port = Some(70_000);
+
+        let error = connection_config_from_instance(&row, Secret::new("pw")).unwrap_err();
+
+        assert!(matches!(error, DbError::Config(_)));
+    }
+
+    #[test]
+    fn resolved_config_never_debugs_the_password() {
+        let config = connection_config_from_instance(&instance(None), Secret::new("pw")).unwrap();
+
+        assert!(!format!("{config:?}").contains("pw"));
+    }
 }

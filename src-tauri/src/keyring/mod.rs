@@ -32,5 +32,28 @@
 mod error;
 mod store;
 
+use std::sync::Arc;
+
 pub use error::KeyringError;
+#[cfg(test)]
+pub(crate) use store::InMemorySecretStore;
 pub use store::{DEFAULT_SERVICE, KeyringSecretStore, SecretStore, account_for};
+
+/// Managed Tauri state holding the process-wide secret store.
+///
+/// Production wires [`KeyringSecretStore`] in `run()`; unit tests can inject an
+/// in-memory implementation instead, which keeps `cargo test` hermetic.
+#[derive(Clone)]
+pub struct SecretStoreState(Arc<dyn SecretStore>);
+
+impl SecretStoreState {
+    /// Wraps a credential store for managed state.
+    pub fn new(store: Arc<dyn SecretStore>) -> Self {
+        Self(store)
+    }
+
+    /// Borrows the store for a command.
+    pub fn store(&self) -> &dyn SecretStore {
+        self.0.as_ref()
+    }
+}

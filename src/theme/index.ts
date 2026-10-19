@@ -7,6 +7,11 @@
  */
 export { cssVariablesResolver } from "./cssVariablesResolver";
 export {
+  ICON_SIZE,
+  IconProvider,
+  type IconProviderProps,
+} from "./IconProvider";
+export {
   BOUNCE_TIMING_FUNCTION,
   BRAND_PRIMARY,
   brandPalette,

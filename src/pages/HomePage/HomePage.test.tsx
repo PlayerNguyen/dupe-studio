@@ -21,7 +21,7 @@ vi.mock("../../services/system/systemService", () => ({
  */
 function renderHomePage() {
   return render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={createQueryClient()}>
         <HomePage />
       </QueryClientProvider>

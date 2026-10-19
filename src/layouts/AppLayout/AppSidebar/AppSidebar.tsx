@@ -32,7 +32,12 @@ import { isSidebarCompacted } from "../../../config/sidebarLayout";
 import { useModal } from "../../../modals";
 import { useAppStore } from "../../../store/appStore";
 import { POPOVER_TRANSITION_DURATION, smoothTransition } from "../../../theme";
+import { IconProvider } from "../../../theme/IconProvider";
 import { cn } from "../../../utils/cn";
+import { DatabaseInstanceList } from "./DatabaseInstanceList";
+
+/** Icon size in pixels used throughout the sidebar, instead of the global default. */
+const SIDEBAR_ICON_SIZE = 16;
 
 /** Renders the brand logo mark shown at the top of the sidebar. */
 function BrandMark() {
@@ -40,7 +45,7 @@ function BrandMark() {
 
   return (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-sm">
-      <Icon size={20} />
+      <Icon />
     </span>
   );
 }
@@ -76,14 +81,12 @@ function SettingsMenu() {
           color="gray"
           aria-label={t("common.settings.open")}
         >
-          <Cog size={18} />
+          <Cog />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Item
-          leftSection={
-            colorScheme === "dark" ? <Sun size={16} /> : <Moon size={16} />
-          }
+          leftSection={colorScheme === "dark" ? <Sun /> : <Moon />}
           rightSection={
             <Text size="xs" c="dimmed">
               {t(`common.colorScheme.${colorScheme}`)}
@@ -94,18 +97,18 @@ function SettingsMenu() {
           {t("common.colorScheme.label")}
         </Menu.Item>
         <Menu.Item
-          leftSection={<Languages size={16} />}
+          leftSection={<Languages />}
           rightSection={
             <Text size="xs" c="dimmed">
               {t(`common.language.options.${i18n.resolvedLanguage ?? "en"}`)}
             </Text>
           }
-          onClick={language.open}
+          onClick={() => language.open()}
         >
           {t("common.language.label")}
         </Menu.Item>
         <Menu.Divider />
-        <Menu.Item leftSection={<Info size={16} />} onClick={about.open}>
+        <Menu.Item leftSection={<Info />} onClick={() => about.open()}>
           {t("common.about.label")}
         </Menu.Item>
       </Menu.Dropdown>
@@ -151,7 +154,7 @@ function SidebarEntry({ item, compacted, active }: SidebarEntryProps) {
             "data-[active=true]:bg-[var(--mantine-color-brand-light)] data-[active=true]:text-[var(--mantine-color-brand-light-color)]",
           )}
         >
-          <Icon size={20} />
+          <Icon />
         </UnstyledButton>
       </Tooltip>
     );
@@ -161,7 +164,7 @@ function SidebarEntry({ item, compacted, active }: SidebarEntryProps) {
     <NavLink
       active={active}
       label={label}
-      leftSection={<Icon size={18} />}
+      leftSection={<Icon />}
       onClick={handleSelect}
       color="brand"
       variant="light"
@@ -174,8 +177,9 @@ function SidebarEntry({ item, compacted, active }: SidebarEntryProps) {
  * Primary application sidebar.
  *
  * Renders the brand header, the navigation model from
- * `src/config/configureSidebar.tsx`, and a footer settings menu (color scheme
- * + language). The sidebar fills the splitter pane that sizes it
+ * `src/config/configureSidebar.tsx`, the saved-instance list
+ * (`DatabaseInstanceList`) and a footer settings menu (color scheme +
+ * language). The sidebar fills the splitter pane that sizes it
  * (`src/layouts/AppLayout/AppLayout.tsx`), so the width comes from the store and
  * the compacted icon rail is derived from it: drag the pane to its minimum (or
  * click the toggle) and the labels are replaced by the rail.
@@ -196,105 +200,109 @@ export function AppSidebar() {
       aria-label="Primary navigation"
       className="flex h-full w-full flex-col"
     >
-      {compacted ? (
-        <div className="flex flex-col items-center gap-2 px-3 py-3">
-          <button
-            type="button"
-            aria-label={sidebarBrand.name}
-            onClick={() => navigate("/")}
-            className="cursor-pointer border-0 bg-transparent p-0"
-          >
-            <BrandMark />
-          </button>
-          <Tooltip
-            label={t("common.sidebar.expand")}
-            position="right"
-            withArrow
-          >
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label={t("common.sidebar.toggle")}
-              onClick={toggleSidebar}
+      <IconProvider size={SIDEBAR_ICON_SIZE}>
+        {compacted ? (
+          <div className="flex flex-col items-center gap-2 px-3 py-3">
+            <button
+              type="button"
+              aria-label={sidebarBrand.name}
+              onClick={() => navigate("/")}
+              className="cursor-pointer border-0 bg-transparent p-0"
             >
-              <PanelLeftOpen size={18} />
-            </ActionIcon>
-          </Tooltip>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 px-3 py-3">
-          <BrandMark />
-          <div className="min-w-0 flex-1">
-            <Text fw={700} size="sm" truncate>
-              {sidebarBrand.name}
-            </Text>
-            <Text c="dimmed" size="xs" truncate>
-              {t(sidebarBrand.taglineKey)}
-            </Text>
+              <BrandMark />
+            </button>
+            <Tooltip
+              label={t("common.sidebar.expand")}
+              position="right"
+              withArrow
+            >
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                aria-label={t("common.sidebar.toggle")}
+                onClick={toggleSidebar}
+              >
+                <PanelLeftOpen />
+              </ActionIcon>
+            </Tooltip>
           </div>
-          <Tooltip
-            label={t("common.sidebar.collapse")}
-            position="left"
-            withArrow
-          >
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label={t("common.sidebar.toggle")}
-              onClick={toggleSidebar}
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-3">
+            <BrandMark />
+            <div className="min-w-0 flex-1">
+              <Text fw={700} size="sm" truncate>
+                {sidebarBrand.name}
+              </Text>
+              <Text c="dimmed" size="xs" truncate>
+                {t(sidebarBrand.taglineKey)}
+              </Text>
+            </div>
+            <Tooltip
+              label={t("common.sidebar.collapse")}
+              position="left"
+              withArrow
             >
-              <PanelLeftClose size={18} />
-            </ActionIcon>
-          </Tooltip>
-        </div>
-      )}
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                aria-label={t("common.sidebar.toggle")}
+                onClick={toggleSidebar}
+              >
+                <PanelLeftClose />
+              </ActionIcon>
+            </Tooltip>
+          </div>
+        )}
 
-      <ScrollArea className="min-h-0 flex-1" type="hover">
-        <Stack gap="md" px={compacted ? "xs" : "sm"} py="sm">
-          {sidebarConfig.map((section) => (
-            <Stack key={section.id} gap={4}>
-              {compacted ? (
-                <div className="mx-auto h-px w-6 bg-[var(--mantine-color-default-border)]" />
-              ) : (
-                <Text
-                  c="dimmed"
-                  fw={600}
-                  size="xs"
-                  tt="uppercase"
-                  px="xs"
-                  className="tracking-wide"
-                >
-                  {t(section.labelKey)}
-                </Text>
-              )}
-              <Stack gap={4} align={compacted ? "center" : "stretch"}>
-                {section.items.map((item) => (
-                  <SidebarEntry
-                    key={item.id}
-                    item={item}
-                    compacted={compacted}
-                    active={isSidebarItemActive(item, location.pathname)}
-                  />
-                ))}
+        <ScrollArea className="min-h-0 flex-1" type="hover">
+          <Stack gap="md" px={compacted ? "xs" : "sm"} py="sm">
+            {sidebarConfig.map((section) => (
+              <Stack key={section.id} gap={4}>
+                {compacted ? (
+                  <div className="mx-auto h-px w-6 bg-[var(--mantine-color-default-border)]" />
+                ) : (
+                  <Text
+                    c="dimmed"
+                    fw={600}
+                    size="xs"
+                    tt="uppercase"
+                    px="xs"
+                    className="tracking-wide"
+                  >
+                    {t(section.labelKey)}
+                  </Text>
+                )}
+                <Stack gap={4} align={compacted ? "center" : "stretch"}>
+                  {section.items.map((item) => (
+                    <SidebarEntry
+                      key={item.id}
+                      item={item}
+                      compacted={compacted}
+                      active={isSidebarItemActive(item, location.pathname)}
+                    />
+                  ))}
+                </Stack>
               </Stack>
-            </Stack>
-          ))}
-        </Stack>
-      </ScrollArea>
+            ))}
 
-      <div
-        className={cn(
-          "flex items-center border-t border-[var(--mantine-color-default-border)]",
-          compacted ? "justify-center py-3" : "px-3 py-2",
-        )}
-      >
-        {compacted ? null : (
-          <Text c="dimmed" size="xs" className="flex-1">
-            v{FRONTEND_VERSION}
-          </Text>
-        )}
-        <SettingsMenu />
-      </div>
+            <DatabaseInstanceList compacted={compacted} />
+          </Stack>
+        </ScrollArea>
+
+        <div
+          className={cn(
+            "flex items-center border-t border-[var(--mantine-color-default-border)]",
+            compacted ? "justify-center py-3" : "px-3 py-2",
+          )}
+        >
+          {compacted ? null : (
+            <Text c="dimmed" size="xs" className="flex-1">
+              v{FRONTEND_VERSION}
+            </Text>
+          )}
+          <SettingsMenu />
+        </div>
+      </IconProvider>
     </Box>
   );
 }

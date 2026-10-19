@@ -9,6 +9,14 @@ vi.mock("../../services/system/systemService", () => ({
   getAppVersion: vi.fn(() => Promise.resolve("9.9.9")),
 }));
 
+vi.mock("../../services/storage/useInstances", () => ({
+  useInstances: () => ({
+    data: { items: [] },
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 describe("App", () => {
   beforeEach(() => {
     useModalStore.getState().reset();

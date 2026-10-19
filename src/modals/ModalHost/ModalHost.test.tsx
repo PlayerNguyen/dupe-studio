@@ -1,8 +1,10 @@
 import { MantineProvider } from "@mantine/core";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { createQueryClient } from "../../config/configureQueryClient";
 import { i18n } from "../../i18n";
 import { useModalStore } from "../../store/modalStore";
 import { ModalHost } from ".";
@@ -14,8 +16,10 @@ import { ModalHost } from ".";
  */
 function renderHost() {
   return render(
-    <MantineProvider>
-      <ModalHost />
+    <MantineProvider env="test">
+      <QueryClientProvider client={createQueryClient()}>
+        <ModalHost />
+      </QueryClientProvider>
     </MantineProvider>,
   );
 }
