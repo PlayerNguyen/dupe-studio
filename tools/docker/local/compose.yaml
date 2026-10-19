@@ -1,0 +1,42 @@
+# Local development MySQL for dupe-studio.
+#
+# Starts a throwaway MySQL 8 server on the host, intended purely for local
+# testing (including the opt-in Rust integration suite in
+# `src-tauri/tests/mysql_integration.rs`).
+#
+# Usage:
+#   docker compose -f tools/docker/local/compose.yaml up -d
+#   $env:DUPE_STUDIO_MYSQL_URL = "mysql://root:root@127.0.0.1:3306/dupe_studio"
+#   cargo test --test mysql_integration
+#
+# Tear down, discarding all data:
+#   docker compose -f tools/docker/local/compose.yaml down -v
+#
+# The credentials below are deliberately trivial and MUST NOT be reused outside
+# a developer's machine.
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: dupe-studio-mysql
+    restart: unless-stopped
+    ports:
+      # host:container — the MySQL protocol port.
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: "dupe_studio"
+    volumes:
+      # Named volume so the data survives `docker compose stop` / `up` cycles.
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # Reports healthy once the server accepts TCP connections, which lets
+      # dependent tooling wait for readiness instead of retrying blindly.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mysql-data:
