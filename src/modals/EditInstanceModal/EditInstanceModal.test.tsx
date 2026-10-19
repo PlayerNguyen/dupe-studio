@@ -40,7 +40,7 @@ const savedInstance: DatabaseInstance = {
  */
 function renderModal() {
   return render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={createQueryClient()}>
         <EditInstanceModal />
       </QueryClientProvider>
@@ -78,7 +78,7 @@ describe("EditInstanceModal", () => {
     const queryClient = createQueryClient();
     const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
     render(
-      <MantineProvider>
+      <MantineProvider env="test">
         <QueryClientProvider client={queryClient}>
           <EditInstanceModal />
         </QueryClientProvider>

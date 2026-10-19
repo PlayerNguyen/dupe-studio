@@ -19,7 +19,7 @@ vi.mock("../../services/system/systemService", () => ({
  */
 function renderAboutModal() {
   return render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={createQueryClient()}>
         <AboutModal />
       </QueryClientProvider>

@@ -38,7 +38,7 @@ function renderLayout(initialPath = "/") {
   );
 
   return render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={createQueryClient()}>
         <RouterProvider router={router} />
       </QueryClientProvider>
@@ -63,5 +63,11 @@ describe("AppLayout", () => {
 
     expect(screen.getByText("settings content")).toBeInTheDocument();
     expect(screen.getAllByText("Settings").length).toBeGreaterThan(0);
+  });
+
+  it("exposes a splitter separator that resizes the sidebar", () => {
+    renderLayout();
+
+    expect(screen.getByRole("separator")).toBeInTheDocument();
   });
 });

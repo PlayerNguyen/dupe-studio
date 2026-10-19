@@ -6,6 +6,10 @@ import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createQueryClient } from "../../../config/configureQueryClient";
+import {
+  SIDEBAR_COMPACTED_WIDTH,
+  SIDEBAR_EXPANDED_WIDTH,
+} from "../../../config/sidebarLayout";
 import { useAppStore } from "../../../store/appStore";
 import { useModalStore } from "../../../store/modalStore";
 import { AppSidebar } from ".";
@@ -57,7 +61,7 @@ function LocationProbe() {
  */
 function renderSidebar(initialPath = "/") {
   return render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={createQueryClient()}>
         <MemoryRouter initialEntries={[initialPath]}>
           <AppSidebar />
@@ -162,17 +166,21 @@ describe("AppSidebar", () => {
     expect(useModalStore.getState().openModals.addInstance).toBe(true);
   });
 
-  it("toggles the collapsed state through the store", async () => {
+  it("toggles between the compacted rail and the expanded width", async () => {
     const user = userEvent.setup();
     renderSidebar();
 
     await user.click(screen.getByLabelText("Toggle sidebar"));
 
-    expect(useAppStore.getState().sidebarCollapsed).toBe(true);
+    expect(useAppStore.getState().sidebarWidth).toBe(SIDEBAR_COMPACTED_WIDTH);
+
+    await user.click(screen.getByLabelText("Toggle sidebar"));
+
+    expect(useAppStore.getState().sidebarWidth).toBe(SIDEBAR_EXPANDED_WIDTH);
   });
 
-  it("renders an icon rail with tooltipped labels when collapsed", () => {
-    useAppStore.getState().setSidebarCollapsed(true);
+  it("renders an icon rail with tooltipped labels when compacted", () => {
+    useAppStore.getState().setSidebarWidth(SIDEBAR_COMPACTED_WIDTH);
 
     renderSidebar();
 

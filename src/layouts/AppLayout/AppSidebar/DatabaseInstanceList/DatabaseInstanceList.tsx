@@ -12,8 +12,8 @@ import { ExpandedInstanceList } from "./ExpandedInstanceList";
 
 /** Props for {@link DatabaseInstanceList}. */
 export interface DatabaseInstanceListProps {
-  /** Whether the sidebar is in its collapsed icon-rail form. */
-  collapsed: boolean;
+  /** Whether the sidebar is in its compacted icon-rail form. */
+  compacted: boolean;
 }
 
 /**
@@ -24,10 +24,10 @@ export interface DatabaseInstanceListProps {
  * Editing goes through the `editInstance` modal with the row as a typed prop, so
  * no extra store is needed.
  *
- * @param props - Whether the sidebar is collapsed.
+ * @param props - Whether the sidebar is compacted.
  * @returns The saved-instance section for the current sidebar form.
  */
-export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
+export function DatabaseInstanceList({ compacted }: DatabaseInstanceListProps) {
   const { t } = useTranslation();
   const addInstance = useModal("addInstance");
   const editInstanceModal = useModal("editInstance");
@@ -56,7 +56,7 @@ export function DatabaseInstanceList({ collapsed }: DatabaseInstanceListProps) {
 
   const remove = (instanceId: string) => deleteMutation.mutate(instanceId);
 
-  if (collapsed) {
+  if (compacted) {
     return (
       <CollapsedInstanceList
         instances={instances}

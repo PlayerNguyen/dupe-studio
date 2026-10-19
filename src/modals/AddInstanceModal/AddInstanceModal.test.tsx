@@ -31,7 +31,7 @@ vi.mock("../../services/database/databaseService", () => ({
 function renderModal() {
   const queryClient = createQueryClient();
   const result = render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={queryClient}>
         <AddInstanceModal />
       </QueryClientProvider>

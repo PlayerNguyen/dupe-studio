@@ -16,7 +16,7 @@ import { ModalHost } from ".";
  */
 function renderHost() {
   return render(
-    <MantineProvider>
+    <MantineProvider env="test">
       <QueryClientProvider client={createQueryClient()}>
         <ModalHost />
       </QueryClientProvider>
