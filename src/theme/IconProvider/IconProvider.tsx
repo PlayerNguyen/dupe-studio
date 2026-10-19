@@ -9,6 +9,14 @@ export const ICON_SIZE = 12;
 export interface IconProviderProps {
   /** Application subtree that receives the icon defaults. */
   children: ReactNode;
+  /**
+   * Icon size for this subtree, in pixels.
+   *
+   * Defaults to {@link ICON_SIZE}; pass a value to give one region its own size
+   * (the sidebar uses {@link SIDEBAR_ICON_SIZE}) without hard-coding `size` on
+   * the individual icons.
+   */
+  size?: number;
 }
 
 /**
@@ -19,11 +27,11 @@ export interface IconProviderProps {
  * `.lucide-icon--dark` or `.lucide-icon--light` for theme-aware styling. Icons
  * inherit `currentColor`, so they keep the color of their surroundings.
  *
- * Individual icons must not pass `size`: the global {@link ICON_SIZE} is
- * authoritative. A different size is a deliberate product decision and should
- * be requested rather than hard-coded per icon.
+ * Individual icons must not pass `size`: the provider is authoritative. A
+ * different size is a deliberate product decision, so it is declared once as a
+ * subtree default (`<IconProvider size={16}>`) rather than repeated per icon.
  *
- * @param props - The subtree to apply the defaults to.
+ * @param props - The subtree and the icon size to apply to it.
  * @returns The subtree wrapped in the Lucide context provider.
  *
  * @example
@@ -35,12 +43,15 @@ export interface IconProviderProps {
  * </MantineProvider>
  * ```
  */
-export function IconProvider({ children }: IconProviderProps) {
+export function IconProvider({
+  children,
+  size = ICON_SIZE,
+}: IconProviderProps) {
   const { colorScheme } = useMantineColorScheme();
 
   return (
     <LucideProvider
-      size={ICON_SIZE}
+      size={size}
       strokeWidth={2}
       className={`lucide-icon lucide-icon--${colorScheme}`}
     >

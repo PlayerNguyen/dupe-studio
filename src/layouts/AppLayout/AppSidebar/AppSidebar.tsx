@@ -32,8 +32,12 @@ import { isSidebarCompacted } from "../../../config/sidebarLayout";
 import { useModal } from "../../../modals";
 import { useAppStore } from "../../../store/appStore";
 import { POPOVER_TRANSITION_DURATION, smoothTransition } from "../../../theme";
+import { IconProvider } from "../../../theme/IconProvider";
 import { cn } from "../../../utils/cn";
 import { DatabaseInstanceList } from "./DatabaseInstanceList";
+
+/** Icon size in pixels used throughout the sidebar, instead of the global default. */
+const SIDEBAR_ICON_SIZE = 16;
 
 /** Renders the brand logo mark shown at the top of the sidebar. */
 function BrandMark() {
@@ -196,107 +200,109 @@ export function AppSidebar() {
       aria-label="Primary navigation"
       className="flex h-full w-full flex-col"
     >
-      {compacted ? (
-        <div className="flex flex-col items-center gap-2 px-3 py-3">
-          <button
-            type="button"
-            aria-label={sidebarBrand.name}
-            onClick={() => navigate("/")}
-            className="cursor-pointer border-0 bg-transparent p-0"
-          >
-            <BrandMark />
-          </button>
-          <Tooltip
-            label={t("common.sidebar.expand")}
-            position="right"
-            withArrow
-          >
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label={t("common.sidebar.toggle")}
-              onClick={toggleSidebar}
+      <IconProvider size={SIDEBAR_ICON_SIZE}>
+        {compacted ? (
+          <div className="flex flex-col items-center gap-2 px-3 py-3">
+            <button
+              type="button"
+              aria-label={sidebarBrand.name}
+              onClick={() => navigate("/")}
+              className="cursor-pointer border-0 bg-transparent p-0"
             >
-              <PanelLeftOpen />
-            </ActionIcon>
-          </Tooltip>
-        </div>
-      ) : (
-        <div className="flex items-center gap-3 px-3 py-3">
-          <BrandMark />
-          <div className="min-w-0 flex-1">
-            <Text fw={700} size="sm" truncate>
-              {sidebarBrand.name}
-            </Text>
-            <Text c="dimmed" size="xs" truncate>
-              {t(sidebarBrand.taglineKey)}
-            </Text>
+              <BrandMark />
+            </button>
+            <Tooltip
+              label={t("common.sidebar.expand")}
+              position="right"
+              withArrow
+            >
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                aria-label={t("common.sidebar.toggle")}
+                onClick={toggleSidebar}
+              >
+                <PanelLeftOpen />
+              </ActionIcon>
+            </Tooltip>
           </div>
-          <Tooltip
-            label={t("common.sidebar.collapse")}
-            position="left"
-            withArrow
-          >
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              aria-label={t("common.sidebar.toggle")}
-              onClick={toggleSidebar}
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-3">
+            <BrandMark />
+            <div className="min-w-0 flex-1">
+              <Text fw={700} size="sm" truncate>
+                {sidebarBrand.name}
+              </Text>
+              <Text c="dimmed" size="xs" truncate>
+                {t(sidebarBrand.taglineKey)}
+              </Text>
+            </div>
+            <Tooltip
+              label={t("common.sidebar.collapse")}
+              position="left"
+              withArrow
             >
-              <PanelLeftClose />
-            </ActionIcon>
-          </Tooltip>
-        </div>
-      )}
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                aria-label={t("common.sidebar.toggle")}
+                onClick={toggleSidebar}
+              >
+                <PanelLeftClose />
+              </ActionIcon>
+            </Tooltip>
+          </div>
+        )}
 
-      <ScrollArea className="min-h-0 flex-1" type="hover">
-        <Stack gap="md" px={compacted ? "xs" : "sm"} py="sm">
-          {sidebarConfig.map((section) => (
-            <Stack key={section.id} gap={4}>
-              {compacted ? (
-                <div className="mx-auto h-px w-6 bg-[var(--mantine-color-default-border)]" />
-              ) : (
-                <Text
-                  c="dimmed"
-                  fw={600}
-                  size="xs"
-                  tt="uppercase"
-                  px="xs"
-                  className="tracking-wide"
-                >
-                  {t(section.labelKey)}
-                </Text>
-              )}
-              <Stack gap={4} align={compacted ? "center" : "stretch"}>
-                {section.items.map((item) => (
-                  <SidebarEntry
-                    key={item.id}
-                    item={item}
-                    compacted={compacted}
-                    active={isSidebarItemActive(item, location.pathname)}
-                  />
-                ))}
+        <ScrollArea className="min-h-0 flex-1" type="hover">
+          <Stack gap="md" px={compacted ? "xs" : "sm"} py="sm">
+            {sidebarConfig.map((section) => (
+              <Stack key={section.id} gap={4}>
+                {compacted ? (
+                  <div className="mx-auto h-px w-6 bg-[var(--mantine-color-default-border)]" />
+                ) : (
+                  <Text
+                    c="dimmed"
+                    fw={600}
+                    size="xs"
+                    tt="uppercase"
+                    px="xs"
+                    className="tracking-wide"
+                  >
+                    {t(section.labelKey)}
+                  </Text>
+                )}
+                <Stack gap={4} align={compacted ? "center" : "stretch"}>
+                  {section.items.map((item) => (
+                    <SidebarEntry
+                      key={item.id}
+                      item={item}
+                      compacted={compacted}
+                      active={isSidebarItemActive(item, location.pathname)}
+                    />
+                  ))}
+                </Stack>
               </Stack>
-            </Stack>
-          ))}
+            ))}
 
-          <DatabaseInstanceList compacted={compacted} />
-        </Stack>
-      </ScrollArea>
+            <DatabaseInstanceList compacted={compacted} />
+          </Stack>
+        </ScrollArea>
 
-      <div
-        className={cn(
-          "flex items-center border-t border-[var(--mantine-color-default-border)]",
-          compacted ? "justify-center py-3" : "px-3 py-2",
-        )}
-      >
-        {compacted ? null : (
-          <Text c="dimmed" size="xs" className="flex-1">
-            v{FRONTEND_VERSION}
-          </Text>
-        )}
-        <SettingsMenu />
-      </div>
+        <div
+          className={cn(
+            "flex items-center border-t border-[var(--mantine-color-default-border)]",
+            compacted ? "justify-center py-3" : "px-3 py-2",
+          )}
+        >
+          {compacted ? null : (
+            <Text c="dimmed" size="xs" className="flex-1">
+              v{FRONTEND_VERSION}
+            </Text>
+          )}
+          <SettingsMenu />
+        </div>
+      </IconProvider>
     </Box>
   );
 }

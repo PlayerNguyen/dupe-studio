@@ -89,6 +89,17 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Settings")).toBeInTheDocument();
   });
 
+  it("renders every sidebar icon at the scoped 16px size", () => {
+    renderSidebar();
+
+    const icons = document.querySelectorAll<SVGSVGElement>("nav .lucide");
+    expect(icons.length).toBeGreaterThan(0);
+    for (const icon of icons) {
+      expect(icon).toHaveAttribute("width", "16");
+      expect(icon).toHaveAttribute("height", "16");
+    }
+  });
+
   it("exposes the grouped preferences behind a single settings button", () => {
     renderSidebar();
 
